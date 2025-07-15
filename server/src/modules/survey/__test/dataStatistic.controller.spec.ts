@@ -243,7 +243,7 @@ describe('DataStatisticController', () => {
             answerLimitTime: 0,
           },
           bottomConf: {
-            logoImage: '/imgs/Logo.webp',
+            logoImage: '/imgs/s-logo.webp',
             logoImageWidth: '60%',
           },
           skinConf: {

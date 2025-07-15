@@ -44,7 +44,7 @@ export const mockResponseSchema: ResponseSchema = {
       answerEndTime: '',
     },
     bottomConf: {
-      logoImage: '/imgs/Logo.webp',
+      logoImage: '/imgs/s-logo.webp',
       logoImageWidth: '60%',
     },
     skinConf: {
