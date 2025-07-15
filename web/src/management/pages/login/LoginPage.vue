@@ -199,24 +199,38 @@ const submitForm = (type: 'login' | 'register') => {
           captcha: formData.captcha,
           captchaId: formData.captchaId
         })
-        pending[type] = false
+        
         if (res.code !== CODE_MAP.SUCCESS) {
-          ElMessage.error(res.errmsg)
-          throw new Error('登录/注册失败' + res.errmsg)
+          ElMessage.error(res.errmsg || '登录失败')
+          pending[type] = false
+          return false
         }
+
         const userStore = useUserStore()
         userStore.login({
           username: res.data.username,
           token: res.data.token
         })
+
         let redirect: any = {
           name: 'survey'
         }
+        
         if (route.query.redirect) {
           redirect = decodeURIComponent(route.query.redirect as string)
         }
-        router.replace(redirect)
+        
+        try {
+          await router.replace(redirect)
+        } catch (error) {
+          console.error('Navigation failed:', error)
+          await router.replace({ name: 'survey' })
+        }
+        
+        pending[type] = false
       } catch (error) {
+        console.error('Login failed:', error)
+        ElMessage.error('登录失败，请重试')
         pending[type] = false
       }
       return true
