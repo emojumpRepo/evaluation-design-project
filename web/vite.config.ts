@@ -1,9 +1,7 @@
 import { fileURLToPath, URL } from 'node:url'
-import { defineConfig, normalizePath } from 'vite'
+import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueJsx from '@vitejs/plugin-vue-jsx'
-
-import { createMpaPlugin, createPages } from 'vite-plugin-virtual-mpa'
 
 import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
@@ -13,39 +11,6 @@ import IconsResolver from 'unplugin-icons/resolver'
 import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 
 const isProd = process.env.NODE_ENV === 'production'
-
-const pages = createPages([
-  {
-    name: 'management',
-    filename: isProd ? 'management.html' : 'src/management/index.html',
-    template: 'src/management/index.html',
-    entry: '/src/management/main.js'
-  },
-  {
-    name: 'render',
-    filename: isProd ? 'render.html' : 'src/render/index.html',
-    template: 'src/render/index.html',
-    entry: '/src/render/main.js'
-  }
-])
-const mpaPlugin = createMpaPlugin({
-  pages,
-  verbose: true,
-  rewrites: [
-    {
-      from: /render/,
-      to: () => normalizePath('/src/render/index.html')
-    },
-    {
-      from: /management\/preview/,
-      to: () => normalizePath('/src/render/index.html')
-    },
-    {
-      from: /\/|\/management\/.?/,
-      to: () => normalizePath('/src/management/index.html')
-    }
-  ]
-})
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -97,8 +62,7 @@ export default defineConfig({
     }),
     Icons({
       autoInstall: true
-    }),
-    mpaPlugin
+    })
   ],
   resolve: {
     alias: {
@@ -108,7 +72,6 @@ export default defineConfig({
       '@render': fileURLToPath(new URL('./src/render', import.meta.url))
     }
   },
-  appType: 'mpa',
   css: {
     preprocessorOptions: {
       scss: {
@@ -138,30 +101,18 @@ export default defineConfig({
     }
   },
   build: {
+    minify: false, // 禁用压缩
     rollupOptions: {
+      input: {
+        management: 'src/management/index.html',
+        render: 'src/render/index.html'
+      },
+      treeshake: false, // 完全禁用 tree-shaking
       output: {
         assetFileNames: '[ext]/[name]-[hash].[ext]',
         chunkFileNames: 'js/[name]-[hash].js',
         entryFileNames: 'js/[name]-[hash].js',
-        manualChunks(id) {
-          // 建议根据项目生产实际情况进行优化，部分可走cdn或进行小资源包合并
-          if (id.includes('element-plus')) {
-            return 'element-plus'
-          }
-          if (id.includes('wangeditor')) {
-            return 'wangeditor'
-          }
-          if (id.includes('node-forg')) {
-            return 'node-forg'
-          }
-          if (id.includes('echarts')) {
-            return 'echarts'
-          }
-
-          if (id.includes('node_modules')) {
-            return 'packages'
-          }
-        }
+        manualChunks: undefined // 禁用手动分包
       }
     }
   }
