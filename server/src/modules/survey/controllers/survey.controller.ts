@@ -497,6 +497,7 @@ export class SurveyController {
         title: surveyMeta.title,
         remark: surveyMeta.remark,
         submitCount: submitCountMap[surveyId] || 0,
+        subStatus: surveyMeta.subStatus,
         surveyType: surveyMeta.surveyType,
         surveyPath: surveyMeta.surveyPath,
         curStatus: surveyMeta.curStatus,

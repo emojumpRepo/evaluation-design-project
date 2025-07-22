@@ -57,7 +57,6 @@ export class AuthService {
     if (!user) {
       throw new Error('用户不存在');
     }
-    console.log('verifyToken user', user);
     return user;
   }
 }

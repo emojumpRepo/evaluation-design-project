@@ -16,7 +16,6 @@ export class Authentication implements CanActivate {
 
     try {
       const user = await this.authService.verifyToken(token);
-      console.log('Authentication user', user);
       request.user = user;
       return true;
     } catch (error) {
