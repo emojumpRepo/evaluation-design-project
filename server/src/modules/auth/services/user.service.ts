@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { MongoRepository } from 'typeorm';
 import { User } from 'src/models/user.entity';
@@ -6,13 +6,25 @@ import { HttpException } from 'src/exceptions/httpException';
 import { EXCEPTION_CODE } from 'src/enums/exceptionCode';
 import { hash256 } from 'src/utils/hash256';
 import { ObjectId } from 'mongodb';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
-export class UserService {
+export class UserService implements OnModuleInit {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: MongoRepository<User>,
+    private readonly configService: ConfigService,
   ) {}
+
+  async onModuleInit() {
+    const adminUsername = this.configService.get<string>('ADMIN_USERNAME', 'admin');
+    const adminPassword = this.configService.get<string>('ADMIN_PASSWORD', '123456');
+    const admin = await this.getUserByUsername(adminUsername);
+    if (!admin) {
+      await this.createUser({ username: adminUsername, password: adminPassword });
+      console.log(`Admin user created: ${adminUsername}`);
+    }
+  }
 
   async createUser(userInfo: {
     username: string;
@@ -41,7 +53,7 @@ export class UserService {
     const user = await this.userRepository.findOne({
       where: {
         username: userInfo.username,
-        password: hash256(userInfo.password), // Please handle password hashing here
+        password: hash256(userInfo.password),
       },
     });
 

@@ -12,10 +12,10 @@
     <div class="brand-section">
       <div class="brand-content">
         <div class="brand-title-container">
-          <div class="brand-logo">
+          <!-- <div class="brand-logo">
             <img src="/imgs/s-logo.webp" alt="logo" />
-          </div>
-          <h1 class="brand-title">小橘问卷</h1>
+          </div> -->
+          <!-- <h1 class="brand-title">小橘问卷</h1> -->
         </div>
         <p class="brand-description">专业的问卷调研平台，助力数据驱动决策</p>
         <div class="feature-list">

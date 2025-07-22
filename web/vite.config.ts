@@ -1,7 +1,9 @@
 import { fileURLToPath, URL } from 'node:url'
-import { defineConfig } from 'vite'
+import { defineConfig, normalizePath } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueJsx from '@vitejs/plugin-vue-jsx'
+
+import { createMpaPlugin, createPages } from 'vite-plugin-virtual-mpa'
 
 import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
@@ -11,6 +13,76 @@ import IconsResolver from 'unplugin-icons/resolver'
 import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 
 const isProd = process.env.NODE_ENV === 'production'
+
+// 只在开发环境创建 mpaPlugin
+let mpaPlugin = null
+if (!isProd) {
+  const pages = createPages([
+    {
+      name: 'management',
+      filename: 'src/management/index.html',
+      template: 'src/management/index.html',
+      entry: '/src/management/main.js'
+    },
+    {
+      name: 'render',
+      filename: 'src/render/index.html',
+      template: 'src/render/index.html',
+      entry: '/src/render/main.js'
+    }
+  ])
+  
+  mpaPlugin = createMpaPlugin({
+    pages,
+    verbose: true,
+    rewrites: [
+      {
+        from: /render/,
+        to: () => normalizePath('/src/render/index.html')
+      },
+      {
+        from: /management\/preview/,
+        to: () => normalizePath('/src/render/index.html')
+      },
+      {
+        from: /\/|\/management\/.?/,
+        to: () => normalizePath('/src/management/index.html')
+      }
+    ]
+  })
+}
+
+// 基础插件配置
+const basePlugins = [
+  vue(),
+  vueJsx(),
+  AutoImport({
+    resolvers: [
+      ElementPlusResolver(),
+      // Auto import icon components
+      IconsResolver({
+        prefix: 'Icon'
+      })
+    ]
+  }),
+  Components({
+    resolvers: [
+      ElementPlusResolver({
+        importStyle: 'sass'
+      }),
+      // Auto register icon components
+      IconsResolver({
+        enabledCollections: ['ep']
+      })
+    ]
+  }),
+  Icons({
+    autoInstall: true
+  })
+]
+
+// 根据环境添加 mpaPlugin
+const plugins = isProd ? basePlugins : [...basePlugins, mpaPlugin]
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -37,33 +109,7 @@ export default defineConfig({
       '@logicflow/extension'
     ]
   },
-  plugins: [
-    vue(),
-    vueJsx(),
-    AutoImport({
-      resolvers: [
-        ElementPlusResolver(),
-        // Auto import icon components
-        IconsResolver({
-          prefix: 'Icon'
-        })
-      ]
-    }),
-    Components({
-      resolvers: [
-        ElementPlusResolver({
-          importStyle: 'sass'
-        }),
-        // Auto register icon components
-        IconsResolver({
-          enabledCollections: ['ep']
-        })
-      ]
-    }),
-    Icons({
-      autoInstall: true
-    })
-  ],
+  plugins,
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),

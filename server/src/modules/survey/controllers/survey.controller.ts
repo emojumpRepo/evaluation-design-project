@@ -17,6 +17,7 @@ import { SurveyConfService } from '../services/surveyConf.service';
 import { ResponseSchemaService } from '../../surveyResponse/services/responseScheme.service';
 import { ContentSecurityService } from '../services/contentSecurity.service';
 import { SurveyHistoryService } from '../services/surveyHistory.service';
+import { SurveyResponseService } from '../../surveyResponse/services/surveyResponse.service';
 
 import BannerData from '../template/banner/index.json';
 import { CreateSurveyDto } from '../dto/createSurvey.dto';
@@ -46,6 +47,7 @@ export class SurveyController {
     private readonly logger: Logger,
     private readonly sessionService: SessionService,
     private readonly userService: UserService,
+    private readonly surveyResponseService: SurveyResponseService,
   ) {}
 
   @Get('/getBannerData')
@@ -196,6 +198,49 @@ export class SurveyController {
     };
   }
 
+  @Post('/updateSimpleConf')
+  @HttpCode(200)
+  @UseGuards(SurveyGuard)
+  @UseGuards(Authentication)
+  @SetMetadata('surveyId', 'body.surveyId')
+  @SetMetadata('surveyPermission', [SURVEY_PERMISSION.SURVEY_CONF_MANAGE])
+  async updateSimpleConf(@Body() surveyInfo, @Request() req) {
+    // console.log('updateSimpleConf', req);
+    const { value, error } = Joi.object({
+      surveyId: Joi.string().required(),
+      beginTime: Joi.string().required(),
+      endTime: Joi.string().required(),
+    }).validate(surveyInfo);
+    if (error) {
+      this.logger.error(error.message);
+      throw new HttpException('参数有误', EXCEPTION_CODE.PARAMETER_ERROR);
+    }
+    const { surveyId, beginTime, endTime } = value;
+    // 更新baseConf
+    const code = await this.surveyConfService.updateSimpleConf({
+      surveyId,
+      beginTime,
+      endTime,
+    });
+
+    const user = await this.userService.getUserByUsername(req.user?.username);
+    if (!user) {
+      throw new HttpException('用户不存在', EXCEPTION_CODE.USER_NOT_EXISTS);
+    }
+
+    // 保存历史
+    await this.surveyHistoryService.addHistory({
+      surveyId,
+      schema: code,
+      type: HISTORY_TYPE.DAILY_HIS,
+      user: {
+        _id: user._id.toString(),
+        username: user.username,
+      },
+    });
+    return { code: 200 };
+  }
+
   @HttpCode(200)
   @Post('/deleteSurvey')
   @UseGuards(SurveyGuard)
@@ -230,7 +275,20 @@ export class SurveyController {
   @SetMetadata('surveyPermission', [SURVEY_PERMISSION.SURVEY_CONF_MANAGE])
   @UseGuards(Authentication)
   async pausingSurvey(@Request() req) {
-    const surveyMeta = req.surveyMeta;
+    // 初始化问卷元数据
+    let surveyMeta = null;
+    // 如果请求中存在问卷元数据，则赋值给surveyMeta
+    if (req.surveyMeta) {
+      surveyMeta = req.surveyMeta;
+    } else if (req.surveyId) {
+      surveyMeta = await this.surveyMetaService.getSurveyById({
+        surveyId: req.surveyId,
+      });
+    }
+
+    if (!surveyMeta) {
+      throw new HttpException('问卷不存在', EXCEPTION_CODE.SURVEY_NOT_FOUND);
+    }
 
     await this.surveyMetaService.pausingSurveyMeta(surveyMeta);
     await this.responseSchemaService.pausingResponseSchema({
@@ -342,7 +400,10 @@ export class SurveyController {
     }
     const username = req.user.username;
     const surveyId = value.surveyId;
-    const surveyMeta = req.surveyMeta;
+    let surveyMeta = req.surveyMeta;
+    if (!surveyMeta) {
+      surveyMeta = await this.surveyMetaService.getSurveyById({ surveyId });
+    }
     if (surveyMeta.isDeleted) {
       throw new HttpException(
         '问卷已删除，无法发布',
@@ -386,6 +447,70 @@ export class SurveyController {
     });
     return {
       code: 200,
+    };
+  }
+
+  @Get('/getSurveyList')
+  @HttpCode(200)
+  @UseGuards(Authentication)
+  async getSurveyList() {
+    // 查询所有 surveyConf
+    const surveyConfList = await this.surveyConfService.getAllSurveyConf();
+    // 查询所有 surveyMeta
+    const surveyMetaList = await this.surveyMetaService.getAllSurveyMeta();
+
+    // 构建 meta 映射表
+    const metaMap = new Map(
+      surveyMetaList.map((meta) => [meta._id.toString(), meta]),
+    );
+
+    // 合并
+    const filteredSurveyList = surveyConfList
+      .map((conf) => {
+        const meta = metaMap.get(conf.pageId?.toString());
+        return {
+          surveyConf: conf,
+          surveyMeta: meta || null,
+        };
+      })
+      .filter((item) => item.surveyMeta);
+
+    // 批量统计提交次数
+    const submitCountMap = {};
+    await Promise.all(
+      filteredSurveyList.map(async (item) => {
+        const surveyId = item.surveyMeta._id.toString();
+        submitCountMap[surveyId] =
+          await this.surveyResponseService.getSurveyResponseCountBySurveyId(
+            surveyId,
+          );
+      }),
+    );
+
+    const result = filteredSurveyList.map((item) => {
+      const { surveyConf, surveyMeta } = item;
+      const surveyId = surveyMeta._id.toString();
+      return {
+        surveyMetaId: surveyMeta._id.toString(),
+        createdAt: surveyMeta.createdAt,
+        updatedAt: surveyMeta.updatedAt,
+        title: surveyMeta.title,
+        remark: surveyMeta.remark,
+        submitCount: submitCountMap[surveyId] || 0,
+        surveyType: surveyMeta.surveyType,
+        surveyPath: surveyMeta.surveyPath,
+        curStatus: surveyMeta.curStatus,
+        beginTime: surveyConf.code.baseConf.beginTime,
+        endTime: surveyConf.code.baseConf.endTime,
+        answerBegTime: surveyConf.code.baseConf.answerBegTime,
+        answerEndTime: surveyConf.code.baseConf.answerEndTime,
+        surveyConfId: surveyConf._id.toString(),
+      };
+    });
+
+    return {
+      code: 200,
+      data: result,
     };
   }
 }

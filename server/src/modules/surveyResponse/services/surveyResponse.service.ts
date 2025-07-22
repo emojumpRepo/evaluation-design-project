@@ -53,4 +53,11 @@ export class SurveyResponseService {
     });
     return (data || []).length;
   }
+
+  async getSurveyResponseCountBySurveyId(surveyId: string) {
+    return this.surveyResponseRepository.count({
+      pageId: surveyId,
+      isDeleted: { $ne: true },
+    });
+  }
 }

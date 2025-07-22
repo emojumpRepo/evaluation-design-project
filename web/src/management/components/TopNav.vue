@@ -1,7 +1,7 @@
 <template>
   <div class="top-nav">
     <div class="left">
-      <img class="logo-img" src="/imgs/s-logo.webp" alt="logo" />
+      <!-- <img class="logo-img" src="/imgs/s-logo.webp" alt="logo" /> -->
       <el-menu router default-active-index="survey" class="el-menu-demo" mode="horizontal">
         <el-menu-item index="survey">
           <router-link :to="{ name: 'survey' }">问卷列表</router-link>
