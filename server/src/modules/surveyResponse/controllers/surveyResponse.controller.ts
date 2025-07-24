@@ -479,7 +479,7 @@ export class SurveyResponseController {
     }
 
     // 最后发送问卷结果
-    await this.sendSurveyAnswer({
+    this.sendSurveyAnswer({
       responseSchema,
       formValues,
       originalUserId,
