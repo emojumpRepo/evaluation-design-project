@@ -36,6 +36,9 @@ export const useSurveyStore = defineStore('survey', () => {
   const formValues = ref({})
   const whiteData = ref({})
   const pageConf = ref([])
+  const userId = ref('') // 用户id
+  const assessmentId = ref('') // 测评id
+  const questionId = ref('') // 问卷id
 
   const router = useRouter()
   const questionStore = useQuestionStore()
@@ -55,6 +58,18 @@ export const useSurveyStore = defineStore('survey', () => {
 
   const setFormValues = (data) => {
     formValues.value = data
+  }
+
+  const setUserId = (data) => {
+    userId.value = data
+  }
+
+  const setAssessmentId = (data) => {
+    assessmentId.value = data
+  }
+
+  const setQuestionId = (data) => {
+    questionId.value = data
   }
 
   const getEncryptInfo = async () => {
@@ -189,12 +204,18 @@ export const useSurveyStore = defineStore('survey', () => {
     formValues,
     whiteData,
     pageConf,
+    userId,
+    assessmentId,
+    questionId,
     initSurvey,
     changeData,
     setWhiteData,
     setFormValues,
     setSurveyPath,
     setEnterTime,
+    setUserId,
+    setAssessmentId,
+    setQuestionId,
     getEncryptInfo,
     showLogicEngine,
     initShowLogicEngine,
