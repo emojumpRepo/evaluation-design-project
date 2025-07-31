@@ -51,7 +51,8 @@ export class SurveyResponseController {
   @HttpCode(200)
   async createResponse(@Body() reqBody) {
     const value = await this.validateParams(reqBody);
-    const { encryptType, data, sessionId } = value;
+    const { encryptType, data, sessionId, userId, assessmentId, questionId } =
+      value;
 
     // 检查签名
     checkSign(reqBody);
@@ -59,12 +60,39 @@ export class SurveyResponseController {
     // 解密数据
     let result = data;
     let formValues: Record<string, any> = {};
-    if (encryptType === ENCRYPT_TYPE.RSA && Array.isArray(data)) {
+    let encryptUserId = '';
+    let originalUserId = '';
+    let encryptAssessmentId = '';
+    let originalAssessmentId = '';
+    let encryptQuestionId = '';
+    let originalQuestionId = '';
+    if (
+      encryptType === ENCRYPT_TYPE.RSA &&
+      Array.isArray(data) &&
+      Array.isArray(userId) &&
+      Array.isArray(assessmentId) &&
+      Array.isArray(questionId)
+    ) {
       result = await this.getDecryptedDataRSA(data, sessionId);
+      encryptUserId = await this.getDecryptedDataRSA(userId, sessionId);
+      encryptAssessmentId = await this.getDecryptedDataRSA(
+        assessmentId,
+        sessionId,
+      );
+      encryptQuestionId = await this.getDecryptedDataRSA(questionId, sessionId);
     }
     formValues = JSON.parse(JSON.stringify(result));
+    originalUserId = encryptUserId;
+    originalAssessmentId = encryptAssessmentId;
+    originalQuestionId = encryptQuestionId;
     try {
-      await this.createResponseProcess({ ...value, data: formValues });
+      await this.createResponseProcess({
+        ...value,
+        data: formValues,
+        userId: originalUserId,
+        assessmentId: originalAssessmentId,
+        questionId: originalQuestionId,
+      });
       return {
         code: 200,
         msg: '提交成功',
@@ -117,10 +145,14 @@ export class SurveyResponseController {
       diffTime: Joi.number(),
       password: Joi.string().allow(null, ''),
       whitelist: Joi.string().allow(null, ''),
+      userId: Joi.array().items(Joi.string()).allow(null, ''),
+      assessmentId: Joi.array().items(Joi.string()).allow(null, ''),
+      questionId: Joi.array().items(Joi.string()).allow(null, ''),
     }).validate(reqBody, { allowUnknown: true });
 
     if (error) {
       this.logger.error(`updateMeta_parameter error: ${error.message}`);
+      console.log('error', error);
       throw new HttpException('参数错误', EXCEPTION_CODE.PARAMETER_ERROR);
     }
     return value;
@@ -148,6 +180,112 @@ export class SurveyResponseController {
       );
     }
   }
+  
+  static formatAllAnswers(dataList, formValues) {
+    function stripHtmlTags(str) {
+      return typeof str === 'string' ? str.replace(/<[^>]+>/g, '') : str;
+    }
+    const result = [];
+    dataList.forEach((questionItem, idx) => {
+      const userValue = formValues[questionItem.field];
+      let answerText: string | string[] = '';
+      const titleText = stripHtmlTags(questionItem.title);
+      if (userValue === undefined || userValue === null || userValue === '') {
+        answerText = '';
+      } else if (
+        Array.isArray(questionItem.options) &&
+        questionItem.options.length > 0
+      ) {
+        const optionMap = {};
+        questionItem.options.forEach((opt) => {
+          optionMap[opt.hash] = opt.text;
+        });
+        const getOptionWithInput = (val) => {
+          const baseText = stripHtmlTags(optionMap[val] || val);
+          const inputKey = `${questionItem.field}_${val}`;
+          const inputValue = formValues[inputKey];
+          if (
+            inputValue !== undefined &&
+            inputValue !== null &&
+            inputValue !== ''
+          ) {
+            return `${baseText}（${stripHtmlTags(inputValue)}）`;
+          }
+          return baseText;
+        };
+        if (Array.isArray(userValue)) {
+          answerText = userValue.map(getOptionWithInput);
+        } else {
+          answerText = getOptionWithInput(userValue);
+        }
+      } else if (
+        questionItem.type === QUESTION_TYPE.CASCADER &&
+        questionItem.cascaderData
+      ) {
+        let optionTextMap = {};
+        let currentLevel = questionItem.cascaderData.children;
+        const path = String(userValue).split(',');
+        const arr = path.map((hash) => {
+          const found = (currentLevel || []).find((opt) => opt.hash === hash);
+          if (found) {
+            optionTextMap[hash] = found.text;
+            currentLevel = found.children;
+            return stripHtmlTags(found.text);
+          } else {
+            return stripHtmlTags(hash);
+          }
+        });
+        answerText = arr.length === 1 ? arr[0] : arr;
+      } else {
+        answerText = stripHtmlTags(userValue);
+      }
+      result.push({
+        title: titleText,
+        answer: answerText,
+        index: idx + 1,
+      });
+    });
+    return result;
+  }
+
+  async sendSurveyAnswer(params) {
+    const {
+      responseSchema,
+      formValues,
+      originalUserId,
+      originalQuestionId,
+      originalAssessmentId,
+      clientTime,
+    } = params;
+    // 格式化所有题目和答案
+    const allAnswers = SurveyResponseController.formatAllAnswers(
+      responseSchema.code.dataConf.dataList,
+      formValues,
+    );
+    console.log('用户填写的所有题目和答案：' + JSON.stringify(allAnswers));
+
+    // 发送加密后的问卷结果
+    if (
+      originalUserId &&
+      allAnswers &&
+      originalQuestionId &&
+      originalAssessmentId
+    ) {
+      try {
+        await this.surveyResponseService.sendSurveyAnswer({
+          userId: originalUserId,
+          allAnswers: JSON.stringify(allAnswers),
+          assessmentId: originalAssessmentId,
+          questionId: originalQuestionId,
+          completeTime: clientTime,
+        });
+      } catch (error) {
+        console.error('发送问卷结果失败', error);
+        throw new HttpException(error.message, EXCEPTION_CODE.PARAMETER_ERROR);
+      }
+    }
+  }
+
   async createResponseProcess(params, canPush = true) {
     const {
       surveyPath,
@@ -157,6 +295,9 @@ export class SurveyResponseController {
       password,
       whitelist: whitelistValue,
       data: formValues,
+      userId: originalUserId,
+      assessmentId: originalAssessmentId,
+      questionId: originalQuestionId,
     } = params;
 
     // 查询schema
@@ -336,5 +477,15 @@ export class SurveyResponseController {
     if (sessionId) {
       this.clientEncryptService.deleteEncryptInfo(sessionId);
     }
+
+    // 最后发送问卷结果
+    this.sendSurveyAnswer({
+      responseSchema,
+      formValues,
+      originalUserId,
+      originalQuestionId,
+      originalAssessmentId,
+      clientTime,
+    });
   }
 }

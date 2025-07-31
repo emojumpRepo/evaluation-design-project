@@ -87,12 +87,18 @@ const normalizationRequestBody = () => {
   const encryptInfo: any = surveyStore.encryptInfo
   const formValues = surveyStore.formValues
   const baseConf: any = surveyStore.baseConf
+  const userId = surveyStore.userId
+  const assessmentId = surveyStore.assessmentId
+  const questionId = surveyStore.questionId
 
   const result: any = {
     surveyPath: surveyPath.value,
     data: JSON.stringify(formValues),
     diffTime: Date.now() - enterTime,
     clientTime: Date.now(),
+    userId,
+    assessmentId,
+    questionId,
     ...whiteData.value
   }
 
@@ -111,6 +117,21 @@ const normalizationRequestBody = () => {
 
     result.data = encrypt[result.encryptType as 'rsa']({
       data: result.data,
+      secretKey: encryptInfo?.data?.secretKey
+    })
+
+    result.userId = encrypt[result.encryptType as 'rsa']({
+      data: result.userId,
+      secretKey: encryptInfo?.data?.secretKey
+    })
+
+    result.assessmentId = encrypt[result.encryptType as 'rsa']({
+      data: result.assessmentId,
+      secretKey: encryptInfo?.data?.secretKey
+    })
+
+    result.questionId = encrypt[result.encryptType as 'rsa']({
+      data: result.questionId,
       secretKey: encryptInfo?.data?.secretKey
     })
 
@@ -143,7 +164,10 @@ const submitSurvey = async () => {
         questionStore.initOptionCountInfo()
       }
     }
-  } catch (error) {
+  } catch (error: any) {
+    alert({
+      title: error.message || '提交失败，请稍后重试'
+    })
     console.log(error)
   }
 }

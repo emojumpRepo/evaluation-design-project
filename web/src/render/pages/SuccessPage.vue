@@ -4,18 +4,20 @@
       <div class="result-content">
         <img src="/imgs/icons/success.webp" />
         <div class="msg" v-html="successMsg"></div>
-        <router-link
+        <!-- <router-link
           :to="{
             name: 'renderPage',
             query: {
-              t: new Date().getTime()
+              t: new Date().getTime(),
+              userId: surveyStore.userId,
+              assessmentId: surveyStore.assessmentId
             }
           }"
           replace
           class="reset-link"
         >
           重新填写
-        </router-link>
+        </router-link> -->
       </div>
       <LogoIcon :logo-conf="logoConf" :readonly="true" />
     </div>

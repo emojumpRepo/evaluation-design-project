@@ -14,15 +14,18 @@ import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 
 const isProd = process.env.NODE_ENV === 'production'
 
-// 只在开发环境创建 mpaPlugin
 let mpaPlugin = null
+// 生产环境才使用 mpaPlugin，在生产环境，Vite 会生成多个 HTML 文件
+// 开发环境由 Vite Dev Server 和 rewrites 规则处理
+// 但是，vite-plugin-virtual-mpa 建议在 dev 环境也使用
 if (!isProd) {
+  // 保持在非生产环境启用
   const pages = createPages([
     {
       name: 'management',
-      filename: 'src/management/index.html',
+      filename: 'src/management/index.html', // 源文件路径
       template: 'src/management/index.html',
-      entry: '/src/management/main.js'
+      entry: '/src/management/main.js' // 源文件路径
     },
     {
       name: 'render',
@@ -31,61 +34,55 @@ if (!isProd) {
       entry: '/src/render/main.js'
     }
   ])
-  
+
   mpaPlugin = createMpaPlugin({
     pages,
     verbose: true,
     rewrites: [
+      // 捕获 /management/preview 或 /management/preview/xxx
       {
-        from: /render/,
+        from: /^\/management\/preview($|\/.*)/,
         to: () => normalizePath('/src/render/index.html')
       },
+      // 捕获 /management 或 /management/xxx
       {
-        from: /management\/preview/,
+        from: /^\/management($|\/.*)/,
+        to: () => normalizePath('/src/management/index.html')
+      },
+      // 捕获 /render 或 /render/xxx
+      {
+        from: /^\/render($|\/.*)/,
         to: () => normalizePath('/src/render/index.html')
       },
+      // 根路径也重写到 management 应用的 HTML
       {
-        from: /\/|\/management\/.?/,
+        from: /^\/$/,
         to: () => normalizePath('/src/management/index.html')
       }
     ]
   })
 }
 
-// 基础插件配置
 const basePlugins = [
   vue(),
   vueJsx(),
-  AutoImport({
-    resolvers: [
-      ElementPlusResolver(),
-      // Auto import icon components
-      IconsResolver({
-        prefix: 'Icon'
-      })
-    ]
-  }),
+  AutoImport({ resolvers: [ElementPlusResolver(), IconsResolver({ prefix: 'Icon' })] }),
   Components({
     resolvers: [
-      ElementPlusResolver({
-        importStyle: 'sass'
-      }),
-      // Auto register icon components
-      IconsResolver({
-        enabledCollections: ['ep']
-      })
+      ElementPlusResolver({ importStyle: 'sass' }),
+      IconsResolver({ enabledCollections: ['ep'] })
     ]
   }),
-  Icons({
-    autoInstall: true
-  })
+  Icons({ autoInstall: true })
 ]
 
-// 根据环境添加 mpaPlugin
 const plugins = isProd ? basePlugins : [...basePlugins, mpaPlugin]
 
-// https://vitejs.dev/config/
 export default defineConfig({
+  // *** 关键修改：在开发环境下，将 base 始终设置为 '/' ***
+  // 在生产环境下，为了部署到 /management/ 子路径，base 仍然需要是 /management/
+  base: isProd ? '/management/' : '/',
+
   optimizeDeps: {
     include: [
       'lodash-es',
@@ -129,36 +126,24 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 8080,
-    open: false, // 是否自动打开浏览器
+    open: false,
     proxy: {
-      '/api': {
-        target: 'http://127.0.0.1:3000',
-        changeOrigin: true
-      },
-      '/exportfile': {
-        target: 'http://127.0.0.1:3000',
-        changeOrigin: true
-      },
-      // 静态文件的默认存储文件夹
-      '/userUpload': {
-        target: 'http://127.0.0.1:3000',
-        changeOrigin: true
-      }
+      '/api': { target: 'http://127.0.0.1:3000', changeOrigin: true },
+      '/exportfile': { target: 'http://127.0.0.1:3000', changeOrigin: true },
+      '/userUpload': { target: 'http://127.0.0.1:3000', changeOrigin: true }
     }
   },
   build: {
-    minify: false, // 禁用压缩
+    minify: false,
     rollupOptions: {
-      input: {
-        management: 'src/management/index.html',
-        render: 'src/render/index.html'
-      },
-      treeshake: false, // 完全禁用 tree-shaking
+      input: { management: 'src/management/index.html', render: 'src/render/index.html' },
+      treeshake: false,
       output: {
+        // 这些 output 路径是针对 base 设置的，只有在生产环境 base 才生效
         assetFileNames: '[ext]/[name]-[hash].[ext]',
         chunkFileNames: 'js/[name]-[hash].js',
         entryFileNames: 'js/[name]-[hash].js',
-        manualChunks: undefined // 禁用手动分包
+        manualChunks: undefined
       }
     }
   }
