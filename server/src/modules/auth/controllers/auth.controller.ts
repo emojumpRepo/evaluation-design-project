@@ -207,6 +207,37 @@ export class AuthController {
     };
   }
 
+  @Get('/admin-token')
+  @HttpCode(200)
+  async generateAdminPermanentToken() {
+    const adminUsername = this.configService.get<string>(
+      'ADMIN_USERNAME',
+      'admin',
+    );
+    const adminPassword = this.configService.get<string>(
+      'ADMIN_PASSWORD',
+      '123456',
+    );
+    const user = await this.userService.getUser({
+      username: adminUsername,
+      password: adminPassword,
+    });
+    if (!user) {
+      throw new HttpException(
+        '管理员账号不存在或密码错误',
+        EXCEPTION_CODE.USER_NOT_EXISTS,
+      );
+    }
+    const token = await this.authService.generateAdminToken();
+    return {
+      code: 200,
+      data: {
+        token,
+        username: user.username,
+      },
+    };
+  }
+
   @Get('/verifyToken')
   @HttpCode(200)
   async verifyToken(@Request() req) {

@@ -335,4 +335,8 @@ export class SurveyMetaService {
     const total = await this.surveyRepository.count(query);
     return total;
   }
+
+  async getAllSurveyMeta() {
+    return this.surveyRepository.find({ where: { isDeleted: { $ne: true } } });
+  }
 }

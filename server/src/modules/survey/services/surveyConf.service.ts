@@ -72,6 +72,10 @@ export class SurveyConfService {
     await this.surveyConfRepository.save(codeInfo);
   }
 
+  async getAllSurveyConf() {
+    return this.surveyConfRepository.find();
+  }
+
   async getSurveyContentByCode(codeInfo: SurveySchemaInterface) {
     const dataList = codeInfo.dataConf.dataList;
     const arr: Array<string> = [];
@@ -86,5 +90,16 @@ export class SurveyConfService {
     return {
       text: arr.join('\n'),
     };
+  }
+
+  async updateSimpleConf(params: { surveyId: string; beginTime: string; endTime: string }) {
+    const conf = await this.getSurveyConfBySurveyId(params.surveyId);
+    if (!conf) {
+      throw new SurveyNotFoundException('问卷配置不存在');
+    }
+    conf.code.baseConf.beginTime = params.beginTime;
+    conf.code.baseConf.endTime = params.endTime;
+    await this.surveyConfRepository.save(conf);
+    return conf.code;
   }
 }

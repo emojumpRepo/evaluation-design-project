@@ -21,8 +21,14 @@ watch(
 
 onMounted(() => {
   const surveyId = route.params.surveyId
-  console.log({ surveyId })
+  const userId = route.query.userId // userId 用作 babyId
+  const assessmentId = route.query.assessmentId
+  const questionId = route.query.questionId
+  console.log({ surveyId, userId, assessmentId, questionId })
   surveyStore.setSurveyPath(surveyId)
+  surveyStore.setUserId(userId)
+  surveyStore.setAssessmentId(assessmentId)
+  surveyStore.setQuestionId(questionId)
   getDetail(surveyId as string)
 })
 const loadData = (res: any, surveyPath: string) => {

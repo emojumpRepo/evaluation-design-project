@@ -29,19 +29,33 @@ export const useUserStore = defineStore('user', () => {
         }
       } catch (error) {
         console.log(error)
+        clearUserInfo()
       }
     }
     initialized.value = true
   }
+  
   const login = (data: IUserInfo) => {
-    userInfo.value = data
+    userInfo.value = {
+      username: data.username,
+      token: data.token
+    }
     hasLogin.value = true
     loginTime.value = Date.now()
-    setUserInfo({
-      userInfo: data,
-      loginTime: loginTime
-    })
+    
+    try {
+      setUserInfo({
+        userInfo: {
+          username: data.username,
+          token: data.token
+        },
+        loginTime: loginTime.value
+      })
+    } catch (error) {
+      console.error('Failed to save user info:', error)
+    }
   }
+  
   const logout = () => {
     userInfo.value = null
     hasLogin.value = false
