@@ -6,4 +6,4 @@ npm run start:prod &
 
 # 启动nginx（前台，主进程）
 echo 'nginx start'
-nginx -g 'daemon off;'
+nginx -g 'daemon off;' 
