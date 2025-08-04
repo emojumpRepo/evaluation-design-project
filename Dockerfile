@@ -27,7 +27,6 @@ RUN cd /xiaoju-survey/server && npm install --network-timeout=300000
 COPY web /xiaoju-survey/web
 COPY server /xiaoju-survey/server
 COPY nginx /xiaoju-survey/nginx
-COPY docker-run.sh /xiaoju-survey/docker-run.sh
 
 # 构建前端，增加内存限制和优化选项
 RUN cd /xiaoju-survey/web && NODE_OPTIONS="--max-old-space-size=4096" npm run build-only
@@ -41,5 +40,59 @@ COPY ./nginx/nginx.conf /etc/nginx/nginx.conf
 # 暴露端口 需要跟nginx的port一致
 EXPOSE 80
 
-# docker入口文件,启动nginx和运行pm2启动,并保证监听不断
-CMD ["sh","docker-run.sh"]
+# 创建启动脚本
+RUN echo '#!/bin/bash\n\
+set -e\n\
+echo "Starting xiaoju-survey services..."\n\
+\n\
+# 检查目录是否存在\n\
+if [ ! -d "/xiaoju-survey/server" ]; then\n\
+    echo "Error: /xiaoju-survey/server directory not found"\n\
+    exit 1\n\
+fi\n\
+\n\
+if [ ! -d "/xiaoju-survey/web" ]; then\n\
+    echo "Error: /xiaoju-survey/web directory not found"\n\
+    exit 1\n\
+fi\n\
+\n\
+# 检查后端构建文件是否存在\n\
+if [ ! -f "/xiaoju-survey/server/dist/main.js" ]; then\n\
+    echo "Error: Backend build file not found at /xiaoju-survey/server/dist/main.js"\n\
+    echo "Please ensure the backend was built correctly"\n\
+    exit 1\n\
+fi\n\
+\n\
+# 启动后端服务（后台）\n\
+echo "Starting backend service..."\n\
+cd /xiaoju-survey/server\n\
+echo "Current directory: $(pwd)"\n\
+echo "Backend files:"\n\
+ls -la dist/\n\
+\n\
+# 设置环境变量\n\
+export NODE_ENV=production\n\
+export PORT=3000\n\
+\n\
+# 启动后端\n\
+npm run start:prod &\n\
+BACKEND_PID=$!\n\
+\n\
+# 等待后端启动\n\
+echo "Waiting for backend to start..."\n\
+sleep 5\n\
+\n\
+# 检查后端是否启动成功\n\
+if ! kill -0 $BACKEND_PID 2>/dev/null; then\n\
+    echo "Error: Backend failed to start"\n\
+    exit 1\n\
+fi\n\
+\n\
+echo "Backend started successfully with PID: $BACKEND_PID"\n\
+\n\
+# 启动nginx（前台，主进程）\n\
+echo "Starting nginx..."\n\
+nginx -g "daemon off;"' > /xiaoju-survey/start.sh && chmod +x /xiaoju-survey/start.sh
+
+# docker入口文件
+CMD ["/xiaoju-survey/start.sh"]
