@@ -506,6 +506,7 @@ export class SurveyController {
         answerBegTime: surveyConf.code.baseConf.answerBegTime,
         answerEndTime: surveyConf.code.baseConf.answerEndTime,
         surveyConfId: surveyConf._id.toString(),
+        questionCount: surveyConf?.code?.dataConf?.dataList?.length || 0,
       };
     });
 
