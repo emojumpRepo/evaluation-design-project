@@ -70,6 +70,15 @@ export class SurveyMeta extends BaseEntity {
   @Column()
   deletedAt: Date;
 
+  // 虚拟字段，用于标识是否为协作问卷
+  isCollaborated?: boolean;
+
+  // 虚拟字段，用于标识当前用户权限
+  currentPermission?: string[];
+
+  // 虚拟字段，用于标识当前用户ID
+  currentUserId?: string;
+
   @BeforeInsert()
   initDefaultInfo() {
     const now = Date.now();

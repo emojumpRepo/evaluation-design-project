@@ -56,6 +56,8 @@ withDefaults(defineProps<Props>(), {
   isMobile: false
 })
 
+let parentOrigin = '*';
+
 const HeaderContent = communalLoader.loadComponent('HeaderContent')
 const MainTitle = communalLoader.loadComponent('MainTitle')
 const SubmitButton = communalLoader.loadComponent('SubmitButton')
@@ -145,6 +147,12 @@ const normalizationRequestBody = () => {
   return result
 }
 
+// 问卷完成时调用，用于iframe通信
+function notifyComplete(payload: any) {
+  console.log('send notifyComplete', payload)
+  window.parent.postMessage({ type: 'complete', payload }, parentOrigin);
+}
+
 const submitSurvey = async () => {
   if (surveyPath.value.length > 8) {
     router.push({ name: 'successPage' })
@@ -154,6 +162,12 @@ const submitSurvey = async () => {
     const params = normalizationRequestBody()
     const res: any = await submitForm(params)
     if (res.code === 200) {
+      notifyComplete({
+        userId: surveyStore.userId,
+        assessmentId: surveyStore.assessmentId,
+        questionId: surveyStore.questionId,
+        surveyPath: surveyPath.value,
+      })
       router.replace({ name: 'successPage' })
     } else {
       alert({

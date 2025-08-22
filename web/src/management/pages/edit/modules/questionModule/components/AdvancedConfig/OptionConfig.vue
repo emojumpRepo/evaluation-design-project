@@ -7,12 +7,13 @@
       class="option-config-wrapper"
       v-model="configVisible"
       :append-to-body="true"
-      width="60%"
+      width="80%"
       size="large"
     >
       <div class="option-handwrite">
         <div class="option-header">
           <div class="header-item flex-1">选项内容</div>
+          <div class="header-item w100">分值</div>
           <div class="header-item w285" v-if="showOthers">选项后增添输入框</div>
         </div>
         <div>
@@ -27,6 +28,9 @@
                     v-html="textOptions[index]"
                     @blur="onBlur($event, index)"
                   ></div>
+                </div>
+                <div class="oitem w100">
+                  <el-input-number v-model="element.score" :min="0" :max="999999" :step="1" size="small" />
                 </div>
                 <div class="oitem moreInfo lh36" v-if="showOthers">
                   <el-switch
@@ -263,6 +267,7 @@ export default {
       margin-top: 10px;
       padding-right: 50px;
       position: relative;
+      gap: 12px;
       .oitem {
         margin-right: 8px;
         text-align: center;
@@ -273,6 +278,14 @@ export default {
           color: #92949d;
           background-color: #fff !important;
         }
+      }
+      .flex-1 { min-width: 0; }
+      .w120 {
+        width: 120px;
+      }
+      .w100 {
+        flex: 0 0 120px;
+        width: 120px;
       }
       .icon-mobile {
         line-height: 36px;
@@ -320,6 +333,11 @@ export default {
       }
     }
 
+    .w100 {
+      width: 100px;
+    }
+
+    .w100 { width: 120px; }
     .w285 {
       width: 285px;
     }

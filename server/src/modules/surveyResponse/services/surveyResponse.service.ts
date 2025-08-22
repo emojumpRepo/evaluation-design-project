@@ -4,15 +4,6 @@ import { MongoRepository } from 'typeorm';
 import { SurveyResponse } from 'src/models/surveyResponse.entity';
 import { ConfigService } from '@nestjs/config';
 import { httpPost } from 'src/utils/request';
-import * as crypto from 'crypto';
-
-function aesEncrypt(data: any, key: string) {
-  const iv = Buffer.alloc(16, 0); // 16字节IV全0
-  const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(key), iv);
-  let encrypted = cipher.update(JSON.stringify(data), 'utf8', 'base64');
-  encrypted += cipher.final('base64');
-  return encrypted;
-}
 
 @Injectable()
 export class SurveyResponseService {
@@ -87,30 +78,32 @@ export class SurveyResponseService {
     questionId: string;
     completeTime: number;
   }) {
-    const key = this.configService.get<string>(
-      'EVALUATION_ADMIN_AES_ENCRYPT_SECRET_KEY',
-    );
-    const encryptedUserId = aesEncrypt(userId, key);
-    const encryptedAnswers = aesEncrypt(allAnswers, key);
-    const encryptedAssessmentId = aesEncrypt(assessmentId, key);
-    const encryptedQuestionId = aesEncrypt(questionId, key);
+    // 检查必要的配置是否存在
     const baseUrl = this.configService.get<string>('EVALUATION_ADMIN_SYSTEM_URL');
+    const tenantId = this.configService.get<string>('EVALUATION_ADMIN_TENANT_ID');
+    
+    // 如果配置缺失，跳过发送，不抛出错误
+    if (!baseUrl || !tenantId) {
+      console.log('管理后台配置缺失，跳过发送问卷结果');
+      return;
+    }
 
     const headers = {
       'Content-Type': 'application/json',
-      'tenant-id': this.configService.get<string>('EVALUATION_ADMIN_TENANT_ID'),
+      'tenant-id': tenantId,
     };
+    const body = {
+      userId,
+      answers: allAnswers,
+      assessmentId,
+      questionnaireId: questionId,
+    };
+    console.log('sendSurveyAnswer', body);
     try {
       const res = await httpPost({
-        url: `${baseUrl}/emojump/questionnaire-result/submit-answer`,
+        url: `${baseUrl}/psychology/app/questionnaire-result/submit-answers`,
         headers,
-        body: {
-          encryptedUserId: encryptedUserId,
-          encryptedAnswerData: encryptedAnswers,
-          encryptedAssessmentId: encryptedAssessmentId,
-          encryptedQuestionnaireId: encryptedQuestionId,
-          completedTime: completeTime,
-        },
+        body,
       });
       if (res.code !== 0) {
         throw new Error(res.msg);
@@ -118,7 +111,14 @@ export class SurveyResponseService {
       return res;
     } catch (error) {
       console.error('发送问卷结果失败', error);
-      throw new Error(error.message);
+      // 如果是网络错误或配置错误，抛出更具体的错误信息
+      if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED') {
+        throw new Error('无法连接到管理后台系统');
+      }
+      if (error.message) {
+        throw new Error(error.message);
+      }
+      throw new Error('发送问卷结果失败');
     }
   }
 }

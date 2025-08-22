@@ -49,6 +49,7 @@ export class SurveyMetaService {
     createFrom: string;
     workspaceId?: string;
     groupId?: string;
+    isCollaborated?: boolean;
   }) {
     const {
       title,
@@ -60,6 +61,7 @@ export class SurveyMetaService {
       userId,
       workspaceId,
       groupId,
+      isCollaborated,
     } = params;
     const surveyPath = await this.getNewSurveyPath();
     const newSurvey = this.surveyRepository.create({
@@ -77,7 +79,14 @@ export class SurveyMetaService {
       groupId: groupId && groupId !== '' ? groupId : null,
     });
 
-    return await this.surveyRepository.save(newSurvey);
+    const savedSurvey = await this.surveyRepository.save(newSurvey);
+    
+    // 添加虚拟字段
+    if (isCollaborated !== undefined) {
+      savedSurvey.isCollaborated = isCollaborated;
+    }
+
+    return savedSurvey;
   }
 
   async pausingSurveyMeta(survey: SurveyMeta) {

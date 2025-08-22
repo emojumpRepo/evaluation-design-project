@@ -180,7 +180,7 @@ export class SurveyResponseController {
       );
     }
   }
-  
+
   static formatAllAnswers(dataList, formValues) {
     function stripHtmlTags(str) {
       return typeof str === 'string' ? str.replace(/<[^>]+>/g, '') : str;
@@ -189,6 +189,7 @@ export class SurveyResponseController {
     dataList.forEach((questionItem, idx) => {
       const userValue = formValues[questionItem.field];
       let answerText: string | string[] = '';
+      let scoreTotal = 0;
       const titleText = stripHtmlTags(questionItem.title);
       if (userValue === undefined || userValue === null || userValue === '') {
         answerText = '';
@@ -196,9 +197,12 @@ export class SurveyResponseController {
         Array.isArray(questionItem.options) &&
         questionItem.options.length > 0
       ) {
-        const optionMap = {};
+        const optionMap = {} as Record<string, string>;
+        const optionScoreMap = {} as Record<string, number>;
         questionItem.options.forEach((opt) => {
           optionMap[opt.hash] = opt.text;
+          const num = Number(opt?.score);
+          optionScoreMap[opt.hash] = Number.isFinite(num) ? num : 0;
         });
         const getOptionWithInput = (val) => {
           const baseText = stripHtmlTags(optionMap[val] || val);
@@ -215,8 +219,13 @@ export class SurveyResponseController {
         };
         if (Array.isArray(userValue)) {
           answerText = userValue.map(getOptionWithInput);
+          scoreTotal = userValue.reduce(
+            (sum, hash) => sum + (optionScoreMap[hash] || 0),
+            0,
+          );
         } else {
           answerText = getOptionWithInput(userValue);
+          scoreTotal = optionScoreMap[userValue] || 0;
         }
       } else if (
         questionItem.type === QUESTION_TYPE.CASCADER &&
@@ -243,6 +252,7 @@ export class SurveyResponseController {
         title: titleText,
         answer: answerText,
         index: idx + 1,
+        score: scoreTotal,
       });
     });
     return result;
@@ -281,7 +291,8 @@ export class SurveyResponseController {
         });
       } catch (error) {
         console.error('发送问卷结果失败', error);
-        throw new HttpException(error.message, EXCEPTION_CODE.PARAMETER_ERROR);
+        // 发送问卷结果失败不应该影响问卷提交，只记录日志
+        this.logger.error(`发送问卷结果失败: ${error.message}`);
       }
     }
   }
