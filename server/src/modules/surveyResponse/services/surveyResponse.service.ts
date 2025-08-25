@@ -70,13 +70,11 @@ export class SurveyResponseService {
     allAnswers,
     assessmentId,
     questionId,
-    completeTime,
   }: {
     userId: string;
     allAnswers: string;
     assessmentId: string;
     questionId: string;
-    completeTime: number;
   }) {
     // 检查必要的配置是否存在
     const baseUrl = this.configService.get<string>('EVALUATION_ADMIN_SYSTEM_URL');
@@ -95,13 +93,13 @@ export class SurveyResponseService {
     const body = {
       userId,
       answers: allAnswers,
-      assessmentId,
+      taskNo: assessmentId,
       questionnaireId: questionId,
     };
     console.log('sendSurveyAnswer', body);
     try {
       const res = await httpPost({
-        url: `${baseUrl}/psychology/app/questionnaire-result/submit-answers`,
+        url: `${baseUrl}/psychology/assessment-participant/submit`,
         headers,
         body,
       });

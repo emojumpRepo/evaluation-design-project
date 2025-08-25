@@ -90,7 +90,7 @@ const normalizationRequestBody = () => {
   const formValues = surveyStore.formValues
   const baseConf: any = surveyStore.baseConf
   const userId = surveyStore.userId
-  const assessmentId = surveyStore.assessmentId
+  const assessmentId = surveyStore.assessmentNo
   const questionId = surveyStore.questionId
 
   const result: any = {
@@ -164,7 +164,7 @@ const submitSurvey = async () => {
     if (res.code === 200) {
       notifyComplete({
         userId: surveyStore.userId,
-        assessmentId: surveyStore.assessmentId,
+        assessmentId: surveyStore.assessmentNo,
         questionId: surveyStore.questionId,
         surveyPath: surveyPath.value,
       })

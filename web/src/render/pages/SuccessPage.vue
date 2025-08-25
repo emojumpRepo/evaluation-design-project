@@ -10,7 +10,7 @@
             query: {
               t: new Date().getTime(),
               userId: surveyStore.userId,
-              assessmentId: surveyStore.assessmentId
+              assessmentId: surveyStore.assessmentNo
             }
           }"
           replace

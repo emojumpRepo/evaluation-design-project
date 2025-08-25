@@ -265,7 +265,6 @@ export class SurveyResponseController {
       originalUserId,
       originalQuestionId,
       originalAssessmentId,
-      clientTime,
     } = params;
     // 格式化所有题目和答案
     const allAnswers = SurveyResponseController.formatAllAnswers(
@@ -287,7 +286,6 @@ export class SurveyResponseController {
           allAnswers: JSON.stringify(allAnswers),
           assessmentId: originalAssessmentId,
           questionId: originalQuestionId,
-          completeTime: clientTime,
         });
       } catch (error) {
         console.error('发送问卷结果失败', error);
