@@ -172,7 +172,13 @@ export class SurveyResponseController {
         );
       }
 
-      return JSON.parse(decodeURIComponent(concatStr));
+      const plainText = decodeURIComponent(concatStr);
+      try {
+        return JSON.parse(plainText);
+      } catch (e) {
+        // 如果不是合法JSON，则返回原始明文（用于userId/assessmentId/questionId等纯文本）
+        return plainText;
+      }
     } catch (error) {
       throw new HttpException(
         '数据解密失败',
