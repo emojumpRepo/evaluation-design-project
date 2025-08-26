@@ -164,7 +164,7 @@ const submitSurvey = async () => {
     if (res.code === 200) {
       notifyComplete({
         userId: surveyStore.userId,
-        assessmentId: surveyStore.assessmentNo,
+        assessmentNo: surveyStore.assessmentNo,
         questionId: surveyStore.questionId,
         surveyPath: surveyPath.value,
       })
