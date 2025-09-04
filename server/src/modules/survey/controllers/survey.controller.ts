@@ -350,6 +350,33 @@ export class SurveyController {
     };
   }
 
+  @Get('/getFormattedQuestions')
+  @HttpCode(200)
+  @UseGuards(SurveyGuard)
+  @SetMetadata('surveyId', 'query.surveyId')
+  @UseGuards(Authentication)
+  async getFormattedQuestions(
+    @Query()
+    queryInfo: { surveyId: string },
+  ) {
+    const { value, error } = Joi.object({
+      surveyId: Joi.string().required(),
+    }).validate(queryInfo);
+    if (error) {
+      this.logger.error(error.message);
+      throw new HttpException('参数有误', EXCEPTION_CODE.PARAMETER_ERROR);
+    }
+
+    const surveyId = value.surveyId;
+    const questions = await this.surveyConfService.getFormattedQuestionsBySurveyId(
+      surveyId,
+    );
+    return {
+      code: 200,
+      data: questions,
+    };
+  }
+
   @Get('/getPreviewSchema')
   @HttpCode(200)
   async getPreviewSchema(
