@@ -21,7 +21,7 @@
   </div>
 </template>
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch, nextTick } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 // @ts-ignore
@@ -78,6 +78,28 @@ const isFinallyPage = computed(() => questionStore.isFinallyPage)
 const pageIndex = computed(() => questionStore.pageIndex)
 const { bannerConf, submitConf, bottomConf: logoConf, whiteData } = storeToRefs(surveyStore)
 const surveyPath = computed(() => surveyStore.surveyPath || '')
+
+// 分页变化时，滚动到页面头部并定位当前页第一个问题
+watch(pageIndex, async () => {
+  await nextTick()
+  const contentEl = boxRef.value?.querySelector('.content') as HTMLElement | null
+  if (contentEl) {
+    // 滚动容器到顶部
+    if (typeof contentEl.scrollTo === 'function') {
+      contentEl.scrollTo({ top: 0, behavior: 'smooth' })
+    } else {
+      contentEl.scrollTop = 0
+    }
+    // 尝试定位到当前页第一个问题
+    const firstQuestion = contentEl.querySelector('.gap') as HTMLElement | null
+    if (firstQuestion && typeof firstQuestion.scrollIntoView === 'function') {
+      firstQuestion.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  } else {
+    // 兜底：滚动窗口到顶部
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+})
 
 const validate = (callback: (v: boolean) => void) => {
   const index = 0
