@@ -23,7 +23,7 @@ import { useOptionsQuota } from '@/render/hooks/useOptionsQuota'
 import { useQuestionStore } from '@/render/stores/question'
 import { useSurveyStore } from '@/render/stores/survey'
 
-import { setSurveyData, clearSurveyData, setSurveySubmit } from '@/render/utils/storage'
+import { setSurveyData, setSurveySubmit } from '@/render/utils/storage'
 
 const props = defineProps({
   indexNumber: {
@@ -44,7 +44,7 @@ const surveyStore = useSurveyStore()
 const formValues = computed(() => {
   return surveyStore.formValues
 })
-const { showLogicEngine, baseConf } = storeToRefs(surveyStore)
+const { showLogicEngine } = storeToRefs(surveyStore)
 const { changeField, changeIndex, needHideFields } = storeToRefs(questionStore)
 
 // 题型配置转换
@@ -112,28 +112,25 @@ const handleChange = (data) => {
 
   processJumpSkip()
 
-  // 开启了断点续答：记录内容
-  if (baseConf.value.fillAnswer) {
-    const formData = updateFormData(data.value)
-    storageAnswer(formData)
-  }
+  // 默认开启断点续答：记录内容
+  const formData = updateFormData(data.value)
+  storageAnswer(formData)
 }
 
 const handleInput = debounce((e) => {
-  // 开启了断点续答：记录内容
-  if (baseConf.value.fillAnswer) {
-    const formData = updateFormData(e.target.value)
-    storageAnswer(formData)
-  }
+  // 默认开启断点续答：记录内容
+  const formData = updateFormData(e.target.value)
+  storageAnswer(formData)
 }, 500)
 
 // 数据回填处理
 const storageAnswer = (formData) => {
-  const id = surveyStore.surveyPath
+  const surveyId = surveyStore.surveyPath
+  const userId = surveyStore.userId
 
-  clearSurveyData(id)
-  setSurveyData(id, formData)
-  setSurveySubmit(id, 0)
+  // 直接保存数据，不清除之前的数据
+  setSurveyData(surveyId, formData, userId)
+  setSurveySubmit(surveyId, 0, userId)
 }
 
 /** 问卷逻辑处理 */

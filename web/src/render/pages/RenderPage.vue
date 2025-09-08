@@ -106,11 +106,11 @@ const normalizationRequestBody = () => {
 
   // 自动回填开启时，记录数据
   if (baseConf.fillSubmitAnswer) {
-    clearSurveyData(surveyPath.value)
-    clearSurveySubmit(surveyPath.value)
+    clearSurveyData(surveyPath.value, userId)
+    clearSurveySubmit(surveyPath.value, userId)
 
-    setSurveyData(surveyPath.value, formValues)
-    setSurveySubmit(surveyPath.value, 1)
+    setSurveyData(surveyPath.value, formValues, userId)
+    setSurveySubmit(surveyPath.value, 1, userId)
   }
 
   // 数据加密
@@ -162,6 +162,11 @@ const submitSurvey = async () => {
     const params = normalizationRequestBody()
     const res: any = await submitForm(params)
     if (res.code === 200) {
+      // 提交成功后清空作答数据
+      clearSurveyData(surveyPath.value, surveyStore.userId)
+      clearSurveySubmit(surveyPath.value, surveyStore.userId)
+      // 提交成功后已清空本地作答数据
+      
       notifyComplete({
         userId: surveyStore.userId,
         assessmentNo: surveyStore.assessmentNo,

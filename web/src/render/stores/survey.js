@@ -9,6 +9,7 @@ import { isMobile as isInMobile } from '@/render/utils/index'
 import { getEncryptInfo as getEncryptInfoApi } from '@/render/api/survey'
 import { useQuestionStore } from '@/render/stores/question'
 import { useErrorInfo } from '@/render/stores/errorInfo'
+import { getSurveyData, getSurveySubmit, setSurveyData } from '@/render/utils/storage'
 
 import adapter from '../adapter'
 import { RuleMatch } from '@/common/logicEngine/RulesMatch'
@@ -170,6 +171,71 @@ export const useSurveyStore = defineStore('survey', () => {
     }
     // 加载空白问卷
     clearFormData(option)
+    
+    // 注册全局调试工具
+    registerDebugTools()
+
+  }
+
+  // 注册全局调试工具
+  const registerDebugTools = () => {
+    if (typeof window !== 'undefined') {
+      window.surveyDebug = {
+        getCurrentAnswers: () => formValues.value,
+        getSavedData: getCurrentAnswerData,
+        getProgress: () => calculateProgress(formValues.value, questionStore.questionData),
+        restoreProgress: restoreProgress,
+        getSurveyId: () => surveyPath.value,
+        getAllLocalStorage: () => {
+          const allData = {}
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i)
+            if (key && (key.includes('_questionData') || key.includes('_submit'))) {
+              allData[key] = JSON.parse(localStorage.getItem(key) || 'null')
+            }
+          }
+          return allData
+        },
+        saveCurrentData: () => {
+          const surveyId = surveyPath.value
+          const currentUserId = userId.value
+          if (surveyId) {
+            setSurveyData(surveyId, formValues.value, currentUserId)
+            return true
+          }
+          return false
+        }
+      }
+    }
+  }
+
+  // 回填保存的进度
+  const restoreProgress = () => {
+    try {
+      const savedData = getSurveyData(surveyPath.value, userId.value)
+      getSurveySubmit(surveyPath.value, userId.value)
+      if (savedData && Object.keys(savedData).length > 0) {
+        formValues.value = { ...formValues.value, ...savedData }
+        Object.keys(savedData).forEach(field => {
+          const v = savedData[field]
+          if (v !== null && v !== undefined && v !== '') {
+            logAnswerProgress(field, v)
+          }
+        })
+        setSurveyData(surveyPath.value, savedData, userId.value)
+      }
+    } catch (error) {
+      console.error('restoreProgress failed:', error)
+    }
+  }
+
+  // 调试工具：查看当前作答数据
+  const getCurrentAnswerData = () => {
+    const surveyId = surveyPath.value
+    const currentUserId = userId.value
+    if (!surveyId) return null
+    const savedData = getSurveyData(surveyId, currentUserId)
+    return savedData
   }
 
   // 用户输入或者选择后，更新表单数据
@@ -177,6 +243,36 @@ export const useSurveyStore = defineStore('survey', () => {
     let { key, value } = data
     formValues.value[key] = value
     questionStore.setChangeField(key)
+    
+    // 记录每道题的作答结果
+    logAnswerProgress(key, value)
+  }
+
+  // 记录每道题的作答进度和结果（仅控制台日志，不保存到localStorage）
+  const logAnswerProgress = (field, value) => {
+    void value
+    const questionData = questionStore.questionData
+    if (!questionData || !questionData[field]) return
+    
+    const currentAnswers = { ...formValues.value }
+    // 如需埋点，可在此处发送最小必要信息
+    void calculateProgress(currentAnswers, questionData)
+  }
+
+  // 计算作答进度
+  const calculateProgress = (answers, questionData) => {
+    const totalQuestions = Object.keys(questionData).length
+    const answeredQuestions = Object.keys(answers).filter(key => {
+      const value = answers[key]
+      return value !== null && value !== undefined && value !== '' && 
+             (Array.isArray(value) ? value.length > 0 : true)
+    }).length
+    
+    return {
+      answered: answeredQuestions,
+      total: totalQuestions,
+      percentage: Math.round((answeredQuestions / totalQuestions) * 100)
+    }
   }
 
   // 初始化逻辑引擎
@@ -220,6 +316,11 @@ export const useSurveyStore = defineStore('survey', () => {
     showLogicEngine,
     initShowLogicEngine,
     jumpLogicEngine,
-    initJumpLogicEngine
+    initJumpLogicEngine,
+    logAnswerProgress,
+    calculateProgress,
+    restoreProgress,
+    getCurrentAnswerData,
+    registerDebugTools
   }
 })
