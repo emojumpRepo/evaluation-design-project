@@ -2,8 +2,20 @@
   <el-form-item class="pick-wrap">
     <el-color-picker
       :modelValue="formConfig.value"
+      :show-alpha="formConfig.showAlpha ?? true"
+      :predefine="formConfig.predefine"
+      :teleported="true"
+      :popper-class="'color-picker-popper'"
+      :clearable="formConfig.clearable ?? true"
       @change="handleColorPickerChange"
     ></el-color-picker>
+    <el-button
+      v-if="formConfig.allowTransparent"
+      size="small"
+      link
+      type="primary"
+      @click="setTransparent"
+    >透明</el-button>
   </el-form-item>
 </template>
 <script setup lang="ts">
@@ -24,6 +36,11 @@ const handleColorPickerChange = (value: string) => {
   const key = props.formConfig.key
   emit(FORM_CHANGE_EVENT_KEY, { key, value })
 }
+
+const setTransparent = () => {
+  const key = props.formConfig.key
+  emit(FORM_CHANGE_EVENT_KEY, { key, value: 'transparent' })
+}
 </script>
 <style lang="scss" scoped>
 .pick-wrap {
@@ -33,6 +50,12 @@ const handleColorPickerChange = (value: string) => {
     width: 100%;
     display: flex;
     justify-content: flex-end;
+    gap: 8px;
   }
+}
+
+/* 提升 ColorPicker 弹层层级，避免被父容器裁剪遮挡 */
+:global(.color-picker-popper) {
+  z-index: 3000;
 }
 </style>

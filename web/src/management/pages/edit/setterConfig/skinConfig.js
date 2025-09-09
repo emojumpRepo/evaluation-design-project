@@ -39,6 +39,11 @@ export default [
         label: '背景颜色',
         type: 'ColorPicker',
         key: 'color',
+        // 支持透明与 Alpha
+        showAlpha: true,
+        allowTransparent: true,
+        clearable: true,
+        predefine: ['transparent', '#000000', '#ffffff', '#04dc70', '#409eff'],
         relyFunc: (data) => {
           return data.type === 'color'
         }

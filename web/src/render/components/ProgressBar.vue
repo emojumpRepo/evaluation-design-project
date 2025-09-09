@@ -67,7 +67,7 @@ const { percent } = useProgressBar()
     }
     .progress-inner-pc {
       border-radius: 2px;
-      background-color: $primary-color;
+      background-color: #04dc70;
     }
   }
 }
@@ -90,7 +90,7 @@ const { percent } = useProgressBar()
       left: 0;
       width: 50%;
       height: 100%;
-      background-color: $primary-color;
+      background-color: #04dc70;
     }
   }
 }

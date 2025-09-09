@@ -36,17 +36,19 @@ watch(
     const root = document.documentElement
     const { themeConf, backgroundConf, contentConf } = skinConfig
 
-    if (themeConf?.color) {
-      // 设置主题颜色
-      root.style.setProperty('--primary-color', themeConf?.color)
-    }
+    // 设置主题颜色（默认 #04dc70）
+    const themeColor = themeConf?.color || '#04dc70'
+    root.style.setProperty('--primary-color', themeColor)
 
     // 设置背景
     const { color, type, image } = backgroundConf || {}
-    root.style.setProperty(
-      '--primary-background',
-      type === 'image' ? `url(${image}) no-repeat center / cover` : color
-    )
+    let backgroundValue = 'transparent'
+    if (type === 'image' && image) {
+      backgroundValue = `url(${image}) no-repeat center / cover`
+    } else if (type === 'color' && color) {
+      backgroundValue = color
+    }
+    root.style.setProperty('--primary-background', backgroundValue)
 
     if (contentConf?.opacity.toString()) {
       // 设置全局透明度

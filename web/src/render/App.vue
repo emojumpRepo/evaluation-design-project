@@ -37,7 +37,7 @@ watch(skinConf, (skinConfig) => {
 @import url('./styles/reset.scss');
 
 html {
-  background: #f7f7f7;
+  background: transparent;
 }
 
 #app {
