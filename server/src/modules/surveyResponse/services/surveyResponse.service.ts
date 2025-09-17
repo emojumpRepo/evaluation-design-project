@@ -4,6 +4,8 @@ import { MongoRepository } from 'typeorm';
 import { SurveyResponse } from 'src/models/surveyResponse.entity';
 import { ConfigService } from '@nestjs/config';
 import { httpPost } from 'src/utils/request';
+import { ObjectId } from 'mongodb';
+import { Logger } from 'src/logger';
 
 @Injectable()
 export class SurveyResponseService {
@@ -11,6 +13,7 @@ export class SurveyResponseService {
     @InjectRepository(SurveyResponse)
     private readonly surveyResponseRepository: MongoRepository<SurveyResponse>,
     private readonly configService: ConfigService,
+    private readonly logger: Logger,
   ) {}
 
   async createSurveyResponse({
@@ -117,6 +120,27 @@ export class SurveyResponseService {
         throw new Error(error.message);
       }
       throw new Error('发送问卷结果失败');
+    }
+  }
+
+  // 更新计算结果到响应记录
+  async updateCalculationResult(
+    responseId: string,
+    calculationResult: any,
+  ): Promise<void> {
+    try {
+      await this.surveyResponseRepository.update(
+        { _id: new ObjectId(responseId) },
+        { 
+          $set: { 
+            calculationResult,
+            calculatedAt: new Date(),
+          } 
+        },
+      );
+      this.logger.info(`已保存计算结果到响应ID: ${responseId}`);
+    } catch (error) {
+      this.logger.error(`保存计算结果失败: ${error.message}`);
     }
   }
 }

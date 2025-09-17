@@ -25,6 +25,7 @@ import { UserService } from 'src/modules/auth/services/user.service';
 import { WorkspaceMemberService } from 'src/modules/workspace/services/workspaceMember.service';
 import { QUESTION_TYPE } from 'src/enums/question';
 import { OpenAuthGuard } from 'src/guards/openAuth.guard';
+import { CalculateService } from 'src/modules/survey/services/calculate.service';
 
 const optionQuestionType: Array<string> = [
   QUESTION_TYPE.RADIO,
@@ -45,6 +46,7 @@ export class SurveyResponseController {
     private readonly logger: Logger,
     private readonly userService: UserService,
     private readonly workspaceMemberService: WorkspaceMemberService,
+    private readonly calculateService: CalculateService,
   ) {}
 
   @Post('/createResponse')
@@ -479,6 +481,26 @@ export class SurveyResponseController {
     const surveyResponse =
       await this.surveyResponseService.createSurveyResponse(model);
 
+    // 执行结果计算
+    let calculationResult = null;
+    const calculateConf = responseSchema?.code?.calculateConf;
+    if (calculateConf?.enabled && calculateConf?.code) {
+      this.logger.info('执行结果计算');
+      calculationResult = await this.calculateService.processCalculation(
+        calculateConf,
+        formValues,
+        responseSchema?.code?.dataConf?.dataList || [],
+      );
+      
+      // 如果有计算结果，保存到响应记录中
+      if (calculationResult && !calculationResult.error) {
+        await this.surveyResponseService.updateCalculationResult(
+          surveyResponse._id.toString(),
+          calculationResult,
+        );
+      }
+    }
+
     // 执行后端回调配置（优先使用问卷独立配置）
     const callbackConfig = responseSchema?.code?.submitConf?.callbackConfig;
     if (callbackConfig?.enabled && callbackConfig?.url) {
@@ -493,6 +515,7 @@ export class SurveyResponseController {
         originalQuestionId,
         surveyResponse,
         surveyPath,
+        calculationResult, // 传递计算结果
       });
     } else if (canPush) {
       // 没有独立配置时，使用全局回调配置
@@ -545,6 +568,7 @@ export class SurveyResponseController {
       originalQuestionId,
       surveyResponse,
       surveyPath,
+      calculationResult,
     } = params;
 
     try {
@@ -560,6 +584,7 @@ export class SurveyResponseController {
           responseSchema.code.dataConf.dataList,
           formValues,
         ),
+        calculationResult: calculationResult, // 包含计算结果
         timestamp: Date.now(),
       };
 

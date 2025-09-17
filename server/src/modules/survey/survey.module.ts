@@ -38,6 +38,7 @@ import { SurveyMetaService } from './services/surveyMeta.service';
 import { ContentSecurityService } from './services/contentSecurity.service';
 import { CollaboratorService } from './services/collaborator.service';
 import { AIGenerateService } from './services/ai-generate.service';
+import { CalculateService } from './services/calculate.service';
 
 import { Counter } from 'src/models/counter.entity';
 import { CounterService } from '../surveyResponse/services/counter.service';
@@ -97,6 +98,10 @@ import { WorkspaceService } from '../workspace/services/workspace.service';
     SurveyGroupService,
     WorkspaceService,
     AIGenerateService,
+    CalculateService,
+  ],
+  exports: [
+    CalculateService,
   ],
 })
 export class SurveyModule {}

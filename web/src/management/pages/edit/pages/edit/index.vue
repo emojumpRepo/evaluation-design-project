@@ -29,6 +29,11 @@ const routes = [
     text: '逻辑设置',
     router: 'LogicIndex',
     key: 'logicEdit'
+  },
+  {
+    text: '结果计算',
+    router: 'CalculateIndex',
+    key: 'calculateEdit'
   }
 ]
 
