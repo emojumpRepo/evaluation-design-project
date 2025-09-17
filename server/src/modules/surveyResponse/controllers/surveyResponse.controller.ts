@@ -86,7 +86,7 @@ export class SurveyResponseController {
     originalAssessmentId = encryptAssessmentId;
     originalQuestionId = encryptQuestionId;
     try {
-      await this.createResponseProcess({
+      const responseData = await this.createResponseProcess({
         ...value,
         data: formValues,
         userId: originalUserId,
@@ -96,6 +96,9 @@ export class SurveyResponseController {
       return {
         code: 200,
         msg: '提交成功',
+        data: {
+          responseId: responseData?.responseId,
+        },
       };
     } catch (error) {
       this.logger.error(`createResponse error: ${error.message}`);
@@ -121,13 +124,16 @@ export class SurveyResponseController {
         ? JSON.parse(data)
         : JSON.parse(JSON.stringify(data));
     try {
-      await this.createResponseProcess(
+      const responseData = await this.createResponseProcess(
         { ...value, data: formValues, channelId },
         false,
       );
       return {
         code: 200,
         msg: '提交成功',
+        data: {
+          responseId: responseData?.responseId,
+        },
       };
     } catch (error) {
       this.logger.error(`createResponse error: ${error.message}`);
@@ -473,7 +479,24 @@ export class SurveyResponseController {
     const surveyResponse =
       await this.surveyResponseService.createSurveyResponse(model);
 
-    if (canPush) {
+    // 执行后端回调配置（优先使用问卷独立配置）
+    const callbackConfig = responseSchema?.code?.submitConf?.callbackConfig;
+    if (callbackConfig?.enabled && callbackConfig?.url) {
+      // 使用问卷独立配置的回调
+      this.logger.info(`使用问卷独立回调配置: ${callbackConfig.url}`);
+      this.executeCallback({
+        callbackConfig,
+        responseSchema,
+        formValues,
+        originalUserId,
+        originalAssessmentId,
+        originalQuestionId,
+        surveyResponse,
+        surveyPath,
+      });
+    } else if (canPush) {
+      // 没有独立配置时，使用全局回调配置
+      this.logger.info(`使用全局回调配置`);
       const sendData = getPushingData({
         surveyResponse,
         questionList: responseSchema?.code?.dataConf?.dataList || [],
@@ -481,11 +504,13 @@ export class SurveyResponseController {
         surveyPath: responseSchema.surveyPath,
       });
 
-      // 异步执行推送任务
+      // 异步执行全局推送任务
       this.messagePushingTaskService.runResponseDataPush({
         surveyId,
         sendData,
       });
+    } else {
+      this.logger.info(`未配置任何回调`);
     }
 
     // 入库成功后，要把密钥删掉，防止被重复使用
@@ -502,5 +527,97 @@ export class SurveyResponseController {
       originalAssessmentId,
       clientTime,
     });
+
+    // 返回responseId
+    return {
+      responseId: surveyResponse._id.toString(),
+    };
+  }
+
+  // 执行回调函数
+  async executeCallback(params) {
+    const {
+      callbackConfig,
+      responseSchema,
+      formValues,
+      originalUserId,
+      originalAssessmentId,
+      originalQuestionId,
+      surveyResponse,
+      surveyPath,
+    } = params;
+
+    try {
+      const callbackData = {
+        surveyPath,
+        surveyId: responseSchema.pageId,
+        responseId: surveyResponse._id.toString(),
+        userId: originalUserId,
+        assessmentId: originalAssessmentId,
+        questionId: originalQuestionId,
+        formData: formValues,
+        answers: SurveyResponseController.formatAllAnswers(
+          responseSchema.code.dataConf.dataList,
+          formValues,
+        ),
+        timestamp: Date.now(),
+      };
+
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+      
+      // 如果启用了自定义headers
+      if (callbackConfig.headersEnabled && callbackConfig.headers) {
+        try {
+          const customHeaders = JSON.parse(callbackConfig.headers);
+          Object.assign(headers, customHeaders);
+        } catch (e) {
+          this.logger.error(`解析自定义headers失败: ${e.message}`);
+        }
+      }
+      const timeout = (parseInt(callbackConfig.timeout) || 10) * 1000;
+      const retryCount = parseInt(callbackConfig.retryCount) || 3;
+
+      let attempt = 0;
+      let lastError;
+
+      while (attempt <= retryCount) {
+        try {
+          const axios = require('axios');
+          const response = await axios({
+            method: callbackConfig.method || 'POST',
+            url: callbackConfig.url,
+            data: callbackConfig.method === 'GET' ? undefined : callbackData,
+            params: callbackConfig.method === 'GET' ? callbackData : undefined,
+            headers,
+            timeout,
+          });
+
+          if (response.status >= 200 && response.status < 300) {
+            this.logger.info(
+              `回调成功: surveyPath=${surveyPath}, attempt=${attempt + 1}`,
+            );
+            return response.data;
+          }
+        } catch (error) {
+          lastError = error;
+          attempt++;
+          if (attempt <= retryCount) {
+            // 等待一段时间后重试
+            await new Promise((resolve) =>
+              setTimeout(resolve, Math.min(1000 * Math.pow(2, attempt), 10000)),
+            );
+          }
+        }
+      }
+
+      this.logger.error(
+        `回调失败（已重试${retryCount}次）: ${lastError?.message}`,
+      );
+    } catch (error) {
+      // 回调失败不影响问卷提交
+      this.logger.error(`执行回调时出错: ${error.message}`);
+    }
   }
 }
