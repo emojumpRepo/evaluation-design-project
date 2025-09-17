@@ -1,0 +1,14 @@
+{
+  "name": "callback-test-server",
+  "version": "1.0.0",
+  "description": "问卷回调测试服务器",
+  "main": "test-callback-server.js",
+  "scripts": {
+    "start": "node test-callback-server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "body-parser": "^1.20.2"
+  }
+}
