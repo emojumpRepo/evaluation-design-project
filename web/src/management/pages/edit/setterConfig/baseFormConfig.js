@@ -114,5 +114,96 @@ export default {
     relyFunc: (data) => {
       return data.whitelistType === 'MEMBER'
     }
+  },
+  callback_enabled: {
+    key: 'callbackConfig.enabled',
+    label: '启用回调',
+    tip: '问卷提交成功后，将向配置的URL发送回调请求',
+    placement: 'top',
+    type: 'CustomedSwitch',
+    value: false
+  },
+  callback_url: {
+    key: 'callbackConfig.url',
+    label: '回调地址',
+    type: 'InputSetter',
+    placeholder: '请输入回调地址，如：https://example.com/callback',
+    tip: '问卷提交数据将发送到此地址',
+    placement: 'top',
+    value: '',
+    relyFunc: (data) => {
+      return !!data?.callbackConfig?.enabled
+    }
+  },
+  callback_method: {
+    key: 'callbackConfig.method',
+    label: '请求方式',
+    type: 'RadioGroup',
+    value: 'POST',
+    options: [
+      {
+        label: 'POST',
+        value: 'POST'
+      },
+      {
+        label: 'GET',
+        value: 'GET'
+      }
+    ],
+    relyFunc: (data) => {
+      return !!data?.callbackConfig?.enabled
+    }
+  },
+  callback_timeout: {
+    key: 'callbackConfig.timeout',
+    label: '超时时间(秒)',
+    type: 'InputNumber',
+    min: 1,
+    max: 60,
+    value: 10,
+    placeholder: '请输入超时时间，默认10秒',
+    tip: '回调请求的超时时间，范围1-60秒',
+    placement: 'top',
+    relyFunc: (data) => {
+      return !!data?.callbackConfig?.enabled
+    }
+  },
+  callback_retryCount: {
+    key: 'callbackConfig.retryCount',
+    label: '重试次数',
+    type: 'InputNumber',
+    min: 0,
+    max: 10,
+    value: 3,
+    placeholder: '失败后重试次数，默认3次',
+    tip: '回调失败后的重试次数，范围0-10次',
+    placement: 'top',
+    relyFunc: (data) => {
+      return !!data?.callbackConfig?.enabled
+    }
+  },
+  callback_headers_enabled: {
+    key: 'callbackConfig.headersEnabled',
+    label: '启用自定义Headers',
+    type: 'CustomedSwitch',
+    value: false,
+    tip: '开启后可自定义HTTP请求头',
+    placement: 'top',
+    relyFunc: (data) => {
+      return !!data?.callbackConfig?.enabled
+    }
+  },
+  callback_headers: {
+    key: 'callbackConfig.headers',
+    label: '请求头配置',
+    type: 'JsonTextarea',
+    value: '{\n  "Content-Type": "application/json"\n}',
+    placeholder: '请输入JSON格式的headers',
+    tip: '必须是有效的JSON格式，例如：{"Authorization": "Bearer token", "X-Custom-Header": "value"}',
+    placement: 'top',
+    rows: 6,
+    relyFunc: (data) => {
+      return !!data?.callbackConfig?.enabled && !!data?.callbackConfig?.headersEnabled
+    }
   }
 }

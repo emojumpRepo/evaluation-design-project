@@ -189,6 +189,59 @@ const submitSurvey = async () => {
       clearSurveySubmit(surveyPath.value, surveyStore.userId)
       // 提交成功后已清空本地作答数据
       
+      // 处理前端回调
+      const callbackConfig = (surveyStore.submitConf as any).callbackConfig
+      if (callbackConfig?.enabled && callbackConfig?.url) {
+        try {
+          // 执行前端回调
+          const callbackData = {
+            surveyPath: surveyPath.value,
+            userId: surveyStore.userId,
+            assessmentNo: surveyStore.assessmentNo,
+            questionId: surveyStore.questionId,
+            formData: surveyStore.formValues,
+            responseId: res.data?.responseId,
+            timestamp: Date.now()
+          }
+          
+          // 如果配置了前端回调，发送请求
+          let headers: any = {
+            'Content-Type': 'application/json'
+          }
+          
+          // 如果启用了自定义headers
+          if (callbackConfig.headersEnabled && callbackConfig.headers) {
+            try {
+              const customHeaders = JSON.parse(callbackConfig.headers)
+              headers = { ...headers, ...customHeaders }
+            } catch (e) {
+              console.error('解析自定义headers失败:', e)
+            }
+          }
+          
+          const timeout = (parseInt(callbackConfig.timeout) || 10) * 1000
+          
+          const controller = new AbortController()
+          const timeoutId = setTimeout(() => controller.abort(), timeout)
+          
+          const callbackRes = await fetch(callbackConfig.url, {
+            method: callbackConfig.method || 'POST',
+            headers,
+            body: callbackConfig.method === 'GET' ? undefined : JSON.stringify(callbackData),
+            signal: controller.signal
+          })
+          
+          clearTimeout(timeoutId)
+          
+          if (!callbackRes.ok) {
+            console.error('回调请求失败:', callbackRes.status)
+          }
+        } catch (callbackError) {
+          // 回调失败不影响问卷提交
+          console.error('回调执行失败:', callbackError)
+        }
+      }
+      
       notifyComplete({
         userId: surveyStore.userId,
         assessmentNo: surveyStore.assessmentNo,
