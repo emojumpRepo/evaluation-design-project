@@ -18,6 +18,7 @@ export default function useInitializeSchema(
     pageConf: [] as any,
     logicConf: {} as any,
     questionDataList: [] as any,
+    calculateConf: {} as any,  // 添加计算配置
     pageEditOne: 1
   })
   const { showLogicEngine, initShowLogicEngine, jumpLogicEngine, initJumpLogicEngine } =
@@ -32,6 +33,7 @@ export default function useInitializeSchema(
     schema.logicConf = codeData.logicConf
     schema.pageConf = codeData.pageConf
     schema.submitConf = merge({}, schema.submitConf, codeData.submitConf)
+    schema.calculateConf = merge({}, schema.calculateConf, codeData.calculateConf || {})  // 添加计算配置
     schema.questionDataList = codeData.questionDataList || []
     schema.pageEditOne = 1
   }
@@ -64,7 +66,8 @@ export default function useInitializeSchema(
         baseConf,
         submitConf,
         dataConf,
-        logicConf = {}
+        logicConf = {},
+        calculateConf = {}  // 添加计算配置
       } = data
       if (!data.pageConf || data.pageConf.length === 0) {
         data.pageConf = [dataConf.dataList.length]
@@ -79,7 +82,8 @@ export default function useInitializeSchema(
           submitConf,
           questionDataList: dataConf.dataList,
           pageConf: data.pageConf,
-          logicConf
+          logicConf,
+          calculateConf  // 添加计算配置
         }
       })
       initializeSchemaCallBack()

@@ -195,6 +195,62 @@ export class SurveyResponseController {
     }
   }
 
+  // 辅助方法：去除HTML标签
+  private stripHtmlTags(str: string): string {
+    return typeof str === 'string' ? str.replace(/<[^>]+>/g, '') : str;
+  }
+
+  // 辅助方法：映射题目类型
+  private mapQuestionType(type: string): string {
+    const typeMap = {
+      'RADIO': 'single_choice',
+      'radio': 'single_choice',
+      'CHECKBOX': 'multiple_choice',
+      'checkbox': 'multiple_choice',
+      'INPUT': 'text',
+      'input': 'text',
+      'TEXTAREA': 'textarea',
+      'textarea': 'textarea',
+      'NUMBER': 'number',
+      'number': 'number',
+      'RADIO_STAR': 'rating',
+      'radio_star': 'rating',
+    };
+    return typeMap[type] || 'other';
+  }
+
+  // 辅助方法：提取量表类型
+  private extractScaleType(scaleType: string): string {
+    if (scaleType?.includes('SDS')) return 'SDS';
+    if (scaleType?.includes('SCL')) return 'SCL90';
+    if (scaleType?.includes('大五')) return 'BIGFIVE';
+    return 'GENERAL';
+  }
+
+  // 辅助方法：生成建议
+  private generateRecommendations(calculationResult: any): string[] {
+    if (!calculationResult) return [];
+    
+    const recommendations = [];
+    const level = calculationResult?.depressionLevel || calculationResult?.level;
+    
+    if (level === '轻度抑郁') {
+      recommendations.push('建议关注情绪健康');
+      recommendations.push('保持规律作息');
+      recommendations.push('适当运动锻炼');
+    } else if (level === '中度抑郁') {
+      recommendations.push('建议寻求专业心理咨询');
+      recommendations.push('保持规律作息');
+      recommendations.push('加强社交活动');
+    } else if (level === '重度抑郁') {
+      recommendations.push('强烈建议尽快寻求专业帮助');
+      recommendations.push('联系心理医生或精神科医生');
+      recommendations.push('保持与亲友的联系');
+    }
+    
+    return recommendations;
+  }
+
   static formatAllAnswers(dataList, formValues) {
     function stripHtmlTags(str) {
       return typeof str === 'string' ? str.replace(/<[^>]+>/g, '') : str;
@@ -287,12 +343,21 @@ export class SurveyResponseController {
     );
     console.log('用户填写的所有题目和答案：' + JSON.stringify(allAnswers));
 
+    // 检查参数是否有效（排除字符串'undefined'和空值）
+    const isValidParam = (param: any) => {
+      return param && 
+             param !== 'undefined' && 
+             param !== undefined && 
+             param !== null &&
+             param !== '';
+    };
+
     // 发送加密后的问卷结果
     if (
-      originalUserId &&
+      isValidParam(originalUserId) &&
       allAnswers &&
-      originalQuestionId &&
-      originalAssessmentId
+      isValidParam(originalQuestionId) &&
+      isValidParam(originalAssessmentId)
     ) {
       try {
         await this.surveyResponseService.sendSurveyAnswer({
@@ -306,6 +371,9 @@ export class SurveyResponseController {
         // 发送问卷结果失败不应该影响问卷提交，只记录日志
         this.logger.error(`发送问卷结果失败: ${error.message}`);
       }
+    } else {
+      // 如果参数无效，只记录日志，不发送
+      this.logger.info(`跳过发送问卷结果，参数无效: userId=${originalUserId}, assessmentId=${originalAssessmentId}, questionId=${originalQuestionId}`);
     }
   }
 
@@ -483,14 +551,43 @@ export class SurveyResponseController {
 
     // 执行结果计算
     let calculationResult = null;
-    const calculateConf = responseSchema?.code?.calculateConf;
+    const calculateConf = (responseSchema?.code as any)?.calculateConf;
+    
+    // 添加详细的调试日志
+    console.log('=== 计算配置调试 ===');
+    console.log('calculateConf:', calculateConf);
+    console.log(`enabled: ${calculateConf?.enabled}`);
+    console.log(`hasCode: ${!!calculateConf?.code}`);
+    console.log(`codeLength: ${calculateConf?.code?.length || 0}`);
+    if (calculateConf?.code) {
+      console.log(`code preview: ${calculateConf.code.substring(0, 100)}...`);
+    }
+    
+    this.logger.info(`计算配置调试: enabled=${calculateConf?.enabled}, hasCode=${!!calculateConf?.code}, codeLength=${calculateConf?.code?.length || 0}`);
+    
     if (calculateConf?.enabled && calculateConf?.code) {
-      this.logger.info('执行结果计算');
-      calculationResult = await this.calculateService.processCalculation(
-        calculateConf,
-        formValues,
-        responseSchema?.code?.dataConf?.dataList || [],
-      );
+      console.log('开始执行结果计算...');
+      this.logger.info('开始执行结果计算');
+      // 使用正确的题目数据源
+      const questionList = (responseSchema?.code as any)?.questionDataList || 
+                          responseSchema?.code?.dataConf?.dataList || [];
+      
+      console.log(`题目列表长度: ${questionList.length}`);
+      this.logger.info(`题目列表长度: ${questionList.length}`);
+      
+      try {
+        calculationResult = await this.calculateService.processCalculation(
+          calculateConf,
+          formValues,
+          questionList,
+        );
+        
+        console.log('计算结果:', calculationResult);
+        this.logger.info(`计算结果: ${JSON.stringify(calculationResult).substring(0, 200)}`);
+      } catch (calcError) {
+        console.error('计算执行错误:', calcError);
+        this.logger.error(`计算执行错误: ${calcError.message}`);
+      }
       
       // 如果有计算结果，保存到响应记录中
       if (calculationResult && !calculationResult.error) {
@@ -499,10 +596,21 @@ export class SurveyResponseController {
           calculationResult,
         );
       }
+    } else {
+      console.log('未启用计算或代码为空');
+      console.log('calculateConf?.enabled:', calculateConf?.enabled);
+      console.log('calculateConf?.code:', !!calculateConf?.code);
+      this.logger.info('未启用计算或代码为空');
     }
+    console.log('=== 计算配置调试结束 ===');
 
     // 执行后端回调配置（优先使用问卷独立配置）
-    const callbackConfig = responseSchema?.code?.submitConf?.callbackConfig;
+    const submitConf = responseSchema?.code?.submitConf;
+    const callbackConfig = (submitConf as any)?.callbackConfig;
+    
+    this.logger.info(`回调配置调试信息: submitConf=${JSON.stringify((submitConf as any)?.callbackConfig || {})}`);
+    this.logger.info(`回调启用状态: enabled=${callbackConfig?.enabled}, url=${callbackConfig?.url}`);
+    
     if (callbackConfig?.enabled && callbackConfig?.url) {
       // 使用问卷独立配置的回调
       this.logger.info(`使用问卷独立回调配置: ${callbackConfig.url}`);
@@ -572,20 +680,77 @@ export class SurveyResponseController {
     } = params;
 
     try {
+      // 格式化题目和答案数据
+      const dataList = responseSchema.code.dataConf.dataList;
+      const questions = dataList.map((questionItem, idx) => {
+        const userValue = formValues[questionItem.field];
+        const questionData = {
+          questionId: questionItem.field,
+          questionText: this.stripHtmlTags(questionItem.title),
+          questionType: this.mapQuestionType(questionItem.type),
+          options: [],
+          userAnswer: null,
+          answerScore: 0,
+        };
+
+        // 处理选项类题目
+        if (questionItem.options && questionItem.options.length > 0) {
+          questionData.options = questionItem.options.map((opt, optIdx) => ({
+            optionId: String.fromCharCode(65 + optIdx), // A, B, C, D...
+            optionText: this.stripHtmlTags(opt.text),
+            score: opt.score || 0,
+          }));
+
+          // 获取用户答案
+          if (userValue) {
+            if (Array.isArray(userValue)) {
+              // 多选题
+              questionData.userAnswer = userValue.map(hash => {
+                const optIdx = questionItem.options.findIndex(opt => opt.hash === hash);
+                return optIdx >= 0 ? String.fromCharCode(65 + optIdx) : hash;
+              });
+              questionData.answerScore = userValue.reduce((sum, hash) => {
+                const opt = questionItem.options.find(o => o.hash === hash);
+                return sum + (opt?.score || 0);
+              }, 0);
+            } else {
+              // 单选题
+              const optIdx = questionItem.options.findIndex(opt => opt.hash === userValue);
+              questionData.userAnswer = optIdx >= 0 ? String.fromCharCode(65 + optIdx) : userValue;
+              const selectedOpt = questionItem.options.find(opt => opt.hash === userValue);
+              questionData.answerScore = selectedOpt?.score || 0;
+            }
+          }
+        } else {
+          // 非选项题目
+          questionData.userAnswer = userValue || '';
+        }
+
+        return questionData;
+      });
+
+      // 构建回调数据
+      const now = Date.now();
       const callbackData = {
-        surveyPath,
-        surveyId: responseSchema.pageId,
-        responseId: surveyResponse._id.toString(),
-        userId: originalUserId,
-        assessmentId: originalAssessmentId,
-        questionId: originalQuestionId,
-        formData: formValues,
-        answers: SurveyResponseController.formatAllAnswers(
-          responseSchema.code.dataConf.dataList,
-          formValues,
-        ),
-        calculationResult: calculationResult, // 包含计算结果
-        timestamp: Date.now(),
+        eventId: `evt_${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}${String(new Date().getDate()).padStart(2, '0')}${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`,
+        questionnaireName: responseSchema.title || '问卷调查',
+        questionnaireType: calculationResult?.scaleType ? this.extractScaleType(calculationResult.scaleType) : 'GENERAL',
+        user: { 
+          userId: originalUserId || 'anonymous',
+        },
+        result: {
+          status: 'completed',
+          rawScore: calculationResult?.rawScore || 0,
+          standardScore: calculationResult?.standardScore || 0,
+          level: calculationResult?.depressionLevel || calculationResult?.level || '未评级',
+          interpretation: calculationResult?.interpretation || '',
+          recommendations: this.generateRecommendations(calculationResult),
+          dimensions: calculationResult?.dimensions || [],
+          questions: questions,
+        },
+        completedAt: now,
+        createdAt: surveyResponse.createDate?.getTime() || now,
+        updatedAt: now,
       };
 
       const headers = {

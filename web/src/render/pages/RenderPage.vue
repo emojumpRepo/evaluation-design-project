@@ -189,6 +189,12 @@ const submitSurvey = async () => {
       clearSurveySubmit(surveyPath.value, surveyStore.userId)
       // 提交成功后已清空本地作答数据
       
+      // 前端回调已移至后端处理，确保数据格式统一和计算结果包含
+      // 注释原因：
+      // 1. 后端可以包含计算结果
+      // 2. 统一的数据格式
+      // 3. 更好的错误处理和重试机制
+      /*
       // 处理前端回调
       const callbackConfig = (surveyStore.submitConf as any).callbackConfig
       if (callbackConfig?.enabled && callbackConfig?.url) {
@@ -241,6 +247,7 @@ const submitSurvey = async () => {
           console.error('回调执行失败:', callbackError)
         }
       }
+      */
       
       notifyComplete({
         userId: surveyStore.userId,

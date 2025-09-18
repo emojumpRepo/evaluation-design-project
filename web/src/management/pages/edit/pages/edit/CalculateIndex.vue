@@ -298,8 +298,23 @@ const handleTemplateSelect = (command: string) => {
   }
   
   if (template) {
+    // 更新本地状态
     calculateConfig.value.code = template
-    handleCodeChange(template)
+    // 确保启用状态
+    if (!calculateConfig.value.enabled) {
+      calculateConfig.value.enabled = true
+    }
+    
+    // 保存到schema
+    const config = {
+      enabled: true,  // 插入模板时自动启用
+      code: template
+    }
+    console.log('保存计算配置 - handleTemplateSelect:', config)
+    changeSchema({
+      key: 'calculateConf',
+      value: config
+    })
     ElMessage.success(message)
   }
 }
@@ -409,9 +424,27 @@ const generateDepressionScaleTemplate = () => {
 // 初始化
 onMounted(() => {
   // 从schema加载配置
+  console.log('初始化计算配置，当前schema.calculateConf:', schema.calculateConf)
+  
   if (schema.calculateConf) {
-    calculateConfig.value = { ...schema.calculateConf }
+    calculateConfig.value = { 
+      enabled: schema.calculateConf.enabled || false,
+      code: schema.calculateConf.code || ''
+    }
+  } else {
+    // 初始化配置
+    calculateConfig.value = {
+      enabled: false,
+      code: ''
+    }
+    // 初始化时也保存一次，确保结构存在
+    changeSchema({
+      key: 'calculateConf',
+      value: calculateConfig.value
+    })
   }
+  
+  console.log('初始化后的calculateConfig:', calculateConfig.value)
   
   // 加载示例测试数据
   loadSampleData()
@@ -419,16 +452,34 @@ onMounted(() => {
 
 // 保存配置到schema
 const handleEnableChange = (enabled: boolean) => {
+  // 更新本地状态
+  calculateConfig.value.enabled = enabled
+  
+  // 保存启用状态
+  const config = {
+    enabled: enabled,
+    code: calculateConfig.value.code || ''
+  }
+  console.log('保存计算配置 - handleEnableChange:', config)
   changeSchema({
-    key: 'calculateConf.enabled',
-    value: enabled
+    key: 'calculateConf',
+    value: config
   })
 }
 
 const handleCodeChange = (newCode: string) => {
+  // 更新本地状态
+  calculateConfig.value.code = newCode
+  
+  // 保存代码内容
+  const config = {
+    enabled: calculateConfig.value.enabled,
+    code: newCode
+  }
+  console.log('保存计算配置 - handleCodeChange:', config)
   changeSchema({
-    key: 'calculateConf.code',
-    value: newCode
+    key: 'calculateConf',
+    value: config
   })
 }
 

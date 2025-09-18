@@ -55,10 +55,7 @@ export class CalculateService {
       `;
 
       // 创建VM脚本
-      const script = new vm.Script(wrappedCode, {
-        timeout: 5000, // 5秒超时
-        displayErrors: true,
-      });
+      const script = new vm.Script(wrappedCode);
 
       // 创建上下文
       const context = vm.createContext(sandbox);
@@ -71,7 +68,7 @@ export class CalculateService {
 
       // 验证返回值
       if (result === undefined || result === null) {
-        this.logger.warn('计算代码未返回有效结果');
+        this.logger.info('计算代码未返回有效结果');
         return null;
       }
 
