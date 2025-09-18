@@ -1,7 +1,12 @@
 # Makefile for Evaluation Design Project
 
 # 变量定义
-DOCKER_COMPOSE = docker-compose
+# 检测 Docker Compose 命令
+DOCKER_COMPOSE := $(shell command -v docker-compose 2> /dev/null)
+ifndef DOCKER_COMPOSE
+    DOCKER_COMPOSE = docker compose
+endif
+
 DOCKER = docker
 PROJECT_NAME = evaluation-design
 IMAGE_NAME = evaluation-design:latest
@@ -156,5 +161,11 @@ dev: ## 启动本地开发环境
 version: ## 显示版本信息
 	@echo "$(GREEN)Evaluation Design Project$(NC)"
 	@echo "Docker version: $$(docker --version)"
-	@echo "Docker Compose version: $$(docker-compose --version)"
+	@echo "Docker Compose version: $$($(DOCKER_COMPOSE) version 2>/dev/null || echo 'Not installed')"
 	@echo "Image: $(IMAGE_NAME)"
+
+.PHONY: check-compose
+check-compose: ## 检查 Docker Compose 安装
+	@echo "Checking Docker Compose..."
+	@which docker-compose >/dev/null 2>&1 && echo "docker-compose found" || echo "docker-compose not found"
+	@docker compose version >/dev/null 2>&1 && echo "docker compose (plugin) found" || echo "docker compose (plugin) not found"
