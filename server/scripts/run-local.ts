@@ -2,8 +2,12 @@ import { MongoMemoryServer } from 'mongodb-memory-server';
 import { spawn } from 'child_process';
 
 async function startServerAndRunScript() {
-  // 启动 MongoDB 内存服务器
-  const mongod = await MongoMemoryServer.create();
+  // 启动 MongoDB 内存服务器，指定版本为 7.0.3 以支持 Debian 12
+  const mongod = await MongoMemoryServer.create({
+    binary: {
+      version: '7.0.3',
+    },
+  });
   const mongoUri = mongod.getUri();
 
   console.log('MongoDB Memory Server started:', mongoUri);
