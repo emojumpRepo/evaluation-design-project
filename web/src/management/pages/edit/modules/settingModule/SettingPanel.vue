@@ -14,12 +14,12 @@
             label-position="left"
             label-width="200px"
             :form-config-list="form.formList"
-            :module-config="baseConf"
+            :module-config="form.key === 'callbackConfig' ? submitConf : baseConf"
             :custom-components="{
               WhiteList,
               TeamMemberList
             }"
-            @form-change="handleFormChange"
+            @form-change="(data) => handleFormChange(data, form.key)"
           ></SetterField>
         </div>
       </div>
@@ -40,6 +40,7 @@ import TeamMemberList from './components/TeamMemberList.vue'
 const editStore = useEditStore()
 const { schema, changeSchema } = editStore
 const baseConf = toRef(schema, 'baseConf')
+const submitConf = toRef(schema, 'submitConf')
 
 const baseConfigWithFormList = baseConfig.map((item) => ({
   ...item,
@@ -47,9 +48,11 @@ const baseConfigWithFormList = baseConfig.map((item) => ({
 }))
 const formConfigList = ref<Array<any>>(baseConfigWithFormList)
 
-const handleFormChange = ({ key, value }: any) => {
+const handleFormChange = ({ key, value }: any, formKey: string) => {
+  // 回调配置保存到 submitConf，其他保存到 baseConf
+  const prefix = formKey === 'callbackConfig' ? 'submitConf' : 'baseConf'
   changeSchema({
-    key: `baseConf.${key}`,
+    key: `${prefix}.${key}`,
     value: value
   })
 }

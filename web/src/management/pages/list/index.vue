@@ -55,6 +55,14 @@
           ref="listRef"
           v-if="workSpaceId || groupId"
         ></BaseList>
+        <RecycleBinList
+          :loading="loading"
+          :data="surveyList"
+          :total="surveyTotal"
+          @refresh="fetchSurveyList"
+          ref="listRef"
+          v-if="menuType === MenuType.RecycleBin"
+        ></RecycleBinList>
         <SpaceList
           ref="spaceListRef"
           @refresh="fetchSpaceList"
@@ -71,6 +79,7 @@
           :total="groupListTotal"
           v-if="menuType === MenuType.PersonalGroup && !groupId"
         ></GroupList>
+  
       </div>
     </div>
     <SpaceModify
@@ -86,6 +95,7 @@
       :visible="showGroupModify"
       @on-close-codify="onCloseGroupModify"
     />
+
     <el-dialog
       title="请选择创建方式"
       v-model="showCreateMethod"
@@ -105,13 +115,13 @@
           </div>
           <span>文本导入</span>
         </div>
-        <div class="create-method-item" @click="commingSoon">
+        <div class="create-method-item" @click="opemAIGenerate">
           <div class="icon">
             <i class="iconfont icon-AIshengcheng"></i>
           </div>
           <span>AI生成</span>
         </div>
-        <div class="create-method-item" @click="commingSoon">
+        <div class="create-method-item" @click="openExcelImport">
           <div class="icon">
             <i class="iconfont icon-Exceldaoru"></i>
           </div>
@@ -129,6 +139,21 @@
       </div>
       <TextImport @change="onTextImportChange"></TextImport>
     </div>
+    <div class="fiexed-ai-generate-wrapper" v-if="showAIGenerate">
+      <div class="ai-generate-header">
+        
+        <div class="nav-left">
+         <img src="/imgs/s-logo.webp" class="logo" />
+          <el-button link  @click="showAIGenerate = false">
+            <i class="iconfont icon-fanhui"></i>
+            返回
+          </el-button>
+        </div>
+      <h2 class="nav-title">AI智能生成问卷</h2>
+      <el-button type="primary"  class="publish-btn"  @click="onShowCreateForm">确定创建</el-button>
+      </div>
+      <AIGenerate @change="onAIGenerteChange"></AIGenerate>
+    </div>
     <el-dialog
       v-model="showCreateForm"
       title="确定创建"
@@ -136,6 +161,13 @@
     >
       <CreateForm @cancel="showCreateForm = false" @confirm="onConfirmCreate"></CreateForm>
     </el-dialog>
+    <ExcelImport
+      v-if="showExcelImport"
+      :visible="showExcelImport"
+      @on-close-excel-import="onCloseExcelImport"
+      @on-excel-upload-success="onExcelUploadSuccess"
+      @on-show-create-form-excel-import="onShowCreateFormExcelImport"
+    />
   </div>
 </template>
 
@@ -143,21 +175,25 @@
 import { ref, computed, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import BaseList from './components/BaseList.vue'
+import RecycleBinList from './components/RecycleBinList.vue'
 import SpaceList from './components/SpaceList.vue'
 import GroupList from './components/GroupList.vue'
 import SliderBar from './components/SliderBar.vue'
 import SpaceModify from './components/SpaceModify.vue'
 import GroupModify from './components/GroupModify.vue'
 import TextImport from './components/TextImport.vue'
+import ExcelImport from './components/ExcelImport.vue'
+import AIGenerate from './components/AIGenerate.vue'
 
 import TopNav from '@/management/components/TopNav.vue'
 import CreateForm from '@/management/components/CreateForm.vue';
 import { MenuType } from '@/management/utils/workSpace'
+
 import { useWorkSpaceStore } from '@/management/stores/workSpace'
 import { useSurveyListStore } from '@/management/stores/surveyList'
 import { type IWorkspace } from '@/management/utils/workSpace'
-import { ElMessage } from 'element-plus'
 import { createSurvey } from '@/management/api/survey'
 
 const workSpaceStore = useWorkSpaceStore()
@@ -181,6 +217,8 @@ const tableTitle = computed(() => {
     return '我的空间'
   } else if (menuType.value === MenuType.SpaceGroup && !workSpaceId.value) {
     return '团队空间'
+  } else if (menuType.value === MenuType.RecycleBin) {
+    return ''
   } else {
     return currentTeamSpace.value?.name || '问卷列表'
   }
@@ -198,11 +236,17 @@ const loading = ref(false)
 const spaceListRef = ref<any>(null)
 const spaceLoading = ref(false)
 const groupLoading = ref(false)
+
 const showCreateMethod = ref(false)
 const showTextImport = ref(false)
+const showExcelImport = ref(false)
 const showCreateForm = ref(false)
 const questionList = ref<Array<any>>([])
 const createMethod = ref('')
+const isRecycleBin = computed(() => menuType.value === MenuType.RecycleBin);
+
+const showAIGenerate = ref(false)
+
 const fetchSpaceList = async (params?: any) => {
   spaceLoading.value = true
   workSpaceStore.changeWorkSpace('')
@@ -217,6 +261,10 @@ const fetchGroupList = async (params?: any) => {
   groupLoading.value = false
 }
 
+const getRecycleBinCount = async (params?: any) => {
+  await workSpaceStore.getRecycleBinCount(params)
+}
+
 const handleSpaceSelect = async (id: string) => {
   if (activeValue.value === id) {
     return void 0
@@ -227,13 +275,22 @@ const handleSpaceSelect = async (id: string) => {
       workSpaceStore.changeMenuType(MenuType.PersonalGroup)
       workSpaceStore.changeWorkSpace('')
       await fetchGroupList()
+      // isRecycleBin.value = false
       break
     case MenuType.SpaceGroup:
       workSpaceStore.changeMenuType(MenuType.SpaceGroup)
       workSpaceStore.changeWorkSpace('')
       await fetchSpaceList()
+      // isRecycleBin.value = false
+      break
+    case MenuType.RecycleBin:
+      workSpaceStore.changeMenuType(MenuType.RecycleBin)
+      workSpaceStore.changeWorkSpace('')
+      // isRecycleBin.value = true
+      await fetchSurveyList()
       break
     default: {
+      // isRecycleBin.value = false
       const parentMenu = spaceMenus.value.find((parent: any) =>
         parent.children.find((children: any) => children.id.toString() === id)
       )
@@ -246,6 +303,7 @@ const handleSpaceSelect = async (id: string) => {
         }
       }
       listRef?.value?.resetCurrentPage()
+      await fetchSurveyList()
       break
     }
   }
@@ -261,6 +319,7 @@ const fetchSurveyList = async (params?: any) => {
   if (workSpaceId.value) {
     params.workspaceId = workSpaceId.value
   }
+  params.isRecycleBin = isRecycleBin.value
   loading.value = true
   await surveyListStore.getSurveyList(params)
   loading.value = false
@@ -268,6 +327,8 @@ const fetchSurveyList = async (params?: any) => {
 
 onMounted(async () => {
   await Promise.all([fetchGroupList(), fetchSpaceList()])
+  // 异步获取回收站数量
+  getRecycleBinCount()
   activeValue.value = 'all'
   workSpaceStore.changeGroup('all')
   await fetchSurveyList()
@@ -311,6 +372,7 @@ const onCloseSpaceModify = (type: string) => {
     spaceListRef.value.onCloseModify()
   }
 }
+
 const onSpaceCreate = () => {
   modifyType.value = 'add'
   showSpaceModify.value = true
@@ -345,8 +407,10 @@ const openTextImport = () => {
   createMethod.value = 'textImport'
 }
 
-const commingSoon = () => {
-  ElMessage.warning('功能暂未开放，敬请期待～')
+const opemAIGenerate = () => { 
+  showCreateMethod.value = false;
+  showAIGenerate.value = true;
+  createMethod.value = 'AIGenerate'
 }
 
 const onShowCreateForm = () => {
@@ -360,40 +424,100 @@ const onShowCreateForm = () => {
   showCreateForm.value = true
 }
 
-const onConfirmCreate = async (formValue: { title: string; remark?: string; surveyType: string; groupId?: string }) => {
-  switch(createMethod.value) {
-    case 'textImport':{
-      const payload: any = {
-        ...formValue,
-        createMethod: createMethod.value,
-        questionList: questionList.value,
+const onConfirmCreate = async (formValue: { title: string; remark?: string; surveyType: string; groupId?: string }, callback: (success: boolean) => void) => {
+  try {
+    switch(createMethod.value) {
+      case 'ExcelImport':
+      case 'textImport':{
+        const payload: any = {
+          ...formValue,
+          createMethod: createMethod.value,
+          questionList: questionList.value,
+        }
+        if (workSpaceId.value) {
+          payload.workspaceId = workSpaceId.value
+        }
+        const res: any = await createSurvey(payload)
+        if (res?.code === 200 && res?.data?.id) {
+          callback(true)
+          const id = res.data.id
+          router.push({
+            name: 'QuestionEditIndex',
+            params: {
+              id
+            }
+          })
+          showCreateForm.value = false
+        } else {
+          ElMessage.error(res?.errmsg || '创建失败')
+          callback(false)
+        }
+        break;
       }
-      if (workSpaceId.value) {
-        payload.workspaceId = workSpaceId.value
+      case 'AIGenerate':{
+        const payload: any = {
+          ...formValue,
+          createMethod: createMethod.value,
+          questionList: questionList.value,
+        }
+        if (workSpaceId.value) {
+          payload.workspaceId = workSpaceId.value
+        }
+        const res: any = await createSurvey(payload)
+        if (res?.code === 200 && res?.data?.id) {
+          const id = res.data.id
+          callback(true)
+          router.push({
+            name: 'QuestionEditIndex',
+            params: {
+              id
+            }
+          })
+          showCreateForm.value = false
+        } else {
+          ElMessage.error(res?.errmsg || '创建失败')
+          callback(false)
+        }
+        break;
       }
-      const res: any = await createSurvey(payload)
-      if (res?.code === 200 && res?.data?.id) {
-        const id = res.data.id
-        router.push({
-          name: 'QuestionEditIndex',
-          params: {
-            id
-          }
-        })
-        showCreateForm.value = false
-      } else {
-        ElMessage.error(res?.errmsg || '创建失败')
-      }
-      break;
+      default:
+        callback(false)
+        break;
     }
-    default:
-      break;
+  } catch (error) {
+    console.error('创建问卷失败:', error)
+    ElMessage.error('创建失败，请稍后重试')
+    callback(false)
   }
 }
 
 const onTextImportChange = (newQuestionList: Array<any>) => {
   questionList.value = newQuestionList
 }
+
+
+const openExcelImport = () => {
+  showCreateMethod.value = false;
+  showExcelImport.value = true;
+  createMethod.value = 'ExcelImport'
+}
+
+const onCloseExcelImport = () => {
+  showExcelImport.value = false
+}
+
+const onExcelUploadSuccess = (newQuestionList: Array<any>) => {
+  questionList.value = newQuestionList
+}
+
+const onShowCreateFormExcelImport = () => {
+  showCreateForm.value = true
+}
+
+const onAIGenerteChange = (newQuestionList: Array<any>) => {
+  questionList.value = newQuestionList
+}
+
 </script>
 
 <style lang="scss" scoped>
@@ -485,7 +609,6 @@ const onTextImportChange = (newQuestionList: Array<any>) => {
     }
   }
 }
-
 .fiexed-text-import-wrapper {
   position: fixed;
   left: 0;
@@ -521,6 +644,47 @@ const onTextImportChange = (newQuestionList: Array<any>) => {
     }
     .title {
       font-size: 16px;
+    }
+  }
+}
+.fiexed-ai-generate-wrapper {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  background-color: #fff;
+  z-index: 999;
+  overflow-x: auto;
+  overflow-y: hidden;
+
+  .ai-generate-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    height: 56px;
+    min-width: 1280px;
+    border-bottom: 1px solid #eee;
+    flex-grow: 0;
+    flex-shrink: 0;
+ 
+    .nav-left {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+
+      .logo {
+        height: 32px;
+      }
+    }
+
+    .nav-title {
+      font-size: 18px;
+      color: #333;
     }
   }
 }

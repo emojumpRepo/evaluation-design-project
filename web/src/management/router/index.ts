@@ -70,6 +70,14 @@ const routes: RouteRecordRaw[] = [
             },
             component: () => import('../pages/edit/pages/edit/LogicIndex.vue'),
             props: (route) => ({ active: route.query.active })
+          },
+          {
+            path: 'calculate',
+            name: 'CalculateIndex',
+            meta: {
+              needLogin: true
+            },
+            component: () => import('../pages/edit/pages/edit/CalculateIndex.vue')
           }
         ]
       },

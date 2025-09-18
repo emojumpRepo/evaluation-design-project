@@ -8,7 +8,7 @@ const mockOriginData = {
   data450: '450111000000000000',
   data458: '15000000000',
   data515: '115019',
-  data770: '123456@qq.com',
+  data770: 'emojump.888@qq.com',
 };
 
 describe('SurveyResponse', () => {

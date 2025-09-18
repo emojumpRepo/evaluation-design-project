@@ -58,5 +58,62 @@ export default [
         value: '提交失败！'
       }
     ]
+  },
+  {
+    title: '回调配置',
+    type: 'Customed',
+    key: 'callbackConfig',
+    content: [
+      {
+        label: '启用回调',
+        labelStyle: { width: '120px' },
+        type: 'CustomedSwitch',
+        key: 'callbackConfig.enabled',
+        value: false
+      },
+      {
+        label: '回调地址',
+        labelStyle: { width: '120px' },
+        type: 'InputSetter',
+        key: 'callbackConfig.url',
+        placeholder: '请输入回调地址，如：https://example.com/callback',
+        value: ''
+      },
+      {
+        label: '回调方式',
+        labelStyle: { width: '120px' },
+        type: 'SelectSetter',
+        key: 'callbackConfig.method',
+        options: [
+          { label: 'POST', value: 'POST' },
+          { label: 'GET', value: 'GET' }
+        ],
+        value: 'POST'
+      },
+      {
+        label: '超时时间(秒)',
+        labelStyle: { width: '120px' },
+        type: 'InputSetter',
+        key: 'callbackConfig.timeout',
+        placeholder: '请输入超时时间，默认10秒',
+        value: '10'
+      },
+      {
+        label: '重试次数',
+        labelStyle: { width: '120px' },
+        type: 'InputSetter',
+        key: 'callbackConfig.retryCount',
+        placeholder: '失败后重试次数，默认3次',
+        value: '3'
+      },
+      {
+        label: '自定义Headers',
+        labelStyle: { width: '120px' },
+        type: 'TextAreaSetter',
+        key: 'callbackConfig.headers',
+        placeholder: '请输入JSON格式的headers，如：{"Authorization": "Bearer token"}',
+        value: '{}'
+      }
+    ]
   }
 ]

@@ -45,6 +45,8 @@
 
 - 数据在线分析和导出，洞察调研结果：数据导出、回收数据管理、分题统计、交叉分析等。
 
+- AI 生成问卷，支持一键接入LLM：对话式生成问卷，实时预览更快速。
+
 **🎨 好看**
 
 - 主题自由定制，适配您的品牌：自定义颜色、背景、图片、Logo、结果页规则等。
@@ -152,6 +154,22 @@ npm run serve
 ### 服务部署
 
 请查看 [部署指导](https://xiaojusurvey.didi.cn/docs/next/document/%E5%B7%A5%E7%A8%8B%E9%83%A8%E7%BD%B2/Docker%E9%83%A8%E7%BD%B2) 。
+
+#### Docker 镜像版本选择
+
+我们提供两个 Docker 镜像版本供您选择：
+
+- **slim 版本** (`xiaojusurvey/xiaoju-survey:latest-slim`): 
+  - 基于 `node:18-slim`，镜像体积更小
+  - 适合生产环境部署
+  - 包含运行所需的最小依赖
+
+- **完整版本** (`xiaojusurvey/xiaoju-survey:latest-full`):
+  - 基于 `node:18`，包含完整的开发工具
+  - 适合开发环境或需要调试的场景
+  - 包含 `curl`、`vim`、`git` 等工具
+
+在 `docker-compose.yaml` 中修改镜像标签即可切换版本。
 
 ### 一键部署
 

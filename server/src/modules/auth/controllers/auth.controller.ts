@@ -216,7 +216,7 @@ export class AuthController {
     );
     const adminPassword = this.configService.get<string>(
       'ADMIN_PASSWORD',
-      '123456',
+      'emojump.888',
     );
     const user = await this.userService.getUser({
       username: adminUsername,
