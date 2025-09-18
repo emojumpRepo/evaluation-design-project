@@ -1,39 +1,65 @@
-# 镜像集成 - 完整版 (包含更多开发工具和调试能力)
-FROM node:18 AS builder
+# 多阶段构建 - 第一阶段：构建应用
+FROM node:18-alpine AS builder
+
+# 设置npm镜像加速
+ENV NPM_CONFIG_REGISTRY=https://registry.npmmirror.com
 
 WORKDIR /builder
 
-# 复制文件到工作区间
+# 先复制package文件，利用Docker层缓存
+COPY web/package*.json /builder/web/
+COPY server/package*.json /builder/server/
+
+# 安装依赖（利用缓存）
+RUN cd /builder/web && npm ci --only=production && \
+    cd /builder/server && npm ci
+
+# 复制源代码
 COPY web/ /builder/web/
 COPY server/ /builder/server/
 
-RUN sed -i 's/deb.debian.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apt/sources.list.d/debian.sources && \
-    npm config set registry https://registry.npmmirror.com && \
-    cd /builder/web && npm install && npm run build-only && \
-    cd /builder/server && npm install && npm run build
+# 构建应用
+RUN cd /builder/web && npm run build-only && \
+    cd /builder/server && npm run build
 
+# 第二阶段：运行环境（生产镜像）
+FROM node:18-alpine
 
-FROM node:18
+# 安装必要的运行时依赖
+RUN apk add --no-cache nginx curl && \
+    rm -rf /var/cache/apk/*
 
-# 设置工作区间
-WORKDIR /xiaoju-survey
+# 设置工作目录
+WORKDIR /app
 
-# 安装nginx和开发工具
-RUN apt-get update && apt-get install -y nginx curl vim git && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
+# 创建非root用户运行应用
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
 
-# 仅复制运行需要的文件到工作区间
-COPY --from=builder /builder/web/dist/ /xiaoju-survey/web/dist/
-COPY --from=builder /builder/server/dist/ /xiaoju-survey/server/dist/
-COPY --from=builder /builder/server/node_modules/ /xiaoju-survey/server/node_modules/
-COPY --from=builder /builder/server/public/ /xiaoju-survey/server/public/
-COPY --from=builder /builder/server/package*.json /builder/server/.env* /xiaoju-survey/server/
-COPY docker-run.sh /xiaoju-survey/docker-run.sh
-# 覆盖nginx配置文件
-COPY nginx/nginx.conf /etc/nginx/nginx.conf
+# 复制构建产物
+COPY --from=builder --chown=nodejs:nodejs /builder/web/dist/ /app/web/dist/
+COPY --from=builder --chown=nodejs:nodejs /builder/server/dist/ /app/server/dist/
+COPY --from=builder --chown=nodejs:nodejs /builder/server/node_modules/ /app/server/node_modules/
+COPY --from=builder --chown=nodejs:nodejs /builder/server/public/ /app/server/public/
+COPY --from=builder --chown=nodejs:nodejs /builder/server/package*.json /app/server/
 
-# 暴露端口 需要跟nginx的port一致
+# 复制配置文件
+COPY --chown=nodejs:nodejs docker-run.sh /app/docker-run.sh
+COPY --chown=nodejs:nodejs nginx/nginx.conf /etc/nginx/nginx.conf
+COPY --chown=nodejs:nodejs server/.env* /app/server/
+
+# 设置执行权限
+RUN chmod +x /app/docker-run.sh
+
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8080/api/health || exit 1
+
+# 暴露端口
 EXPOSE 8080
 
-# docker入口文件,启动nginx和运行pm2启动,并保证监听不断
-CMD ["sh","docker-run.sh"]
+# 使用非root用户
+USER nodejs
+
+# 启动应用
+CMD ["/bin/sh", "/app/docker-run.sh"]

@@ -1,46 +1,125 @@
-version: "3.6"
-services:
-  mongo:
-    image: mongo:4
-    container_name: xiaoju-survey-mongo
-    restart: always
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-admin} # 默认使用系统的环境变量，如果没有则使用admin
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:-emojump.888} # 默认使用系统的环境变量，如果没有则使用emojump.888
-    ports:
-      - "27017:27017" # 数据库端口
-    volumes:
-      - mongo-volume:/data/db # xiaoju-survey-data/db/data:/data/db
-    networks:
-      - xiaoju-survey
+version: "3.8"
 
-  xiaoju-survey:
-    # 选择镜像版本：
-    # slim版本 (推荐生产环境): xiaojusurvey/xiaoju-survey:1.3.3-slim
-    # 完整版本 (推荐开发环境): xiaojusurvey/xiaoju-survey:1.3.3
-    image: "xiaojusurvey/xiaoju-survey:1.3.3-slim" # 最新版本：https://hub.docker.com/r/xiaojusurvey/xiaoju-survey/tags
-    container_name: xiaoju-survey
-    restart: always
-    ports:
-      - "8080:8080" # API端口
+services:
+  # MongoDB 数据库服务
+  mongo:
+    image: mongo:7.0  # 使用更新的MongoDB版本
+    container_name: evaluation-mongo
+    restart: unless-stopped
     environment:
-      XIAOJU_SURVEY_MONGO_URL: mongodb://${MONGO_INITDB_ROOT_USERNAME:-admin}:${MONGO_INITDB_ROOT_PASSWORD:-emojump.888}@xiaoju-survey-mongo:27017/admin?authSource=admin
-      XIAOJU_SURVEY_MONGO_AUTH_SOURCE: ${XIAOJU_SURVEY_MONGO_AUTH_SOURCE:-admin} # 如使用mongo官方镜像，并且设置了MONGO_INITDB_ROOT_USERNAME和MONGO_INITDB_ROOT_PASSWORD，默认值是admin
-      XIAOJU_SURVEY_MONGO_DB_NAME: xiaoju_survey
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-root}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:-k765g6hj}
+      MONGO_INITDB_DATABASE: xiaojuSurvey
+    ports:
+      - "${MONGO_PORT:-27017}:27017"
+    volumes:
+      - mongo-data:/data/db
+      - mongo-config:/data/configdb
+      - ./mongo-init:/docker-entrypoint-initdb.d:ro  # 初始化脚本
+    networks:
+      - evaluation-network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+  # Redis 缓存服务（可选）
+  redis:
+    image: redis:7-alpine
+    container_name: evaluation-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - evaluation-network
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # 主应用服务
+  evaluation-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - NPM_REGISTRY=${NPM_REGISTRY:-https://registry.npmmirror.com}
+    image: evaluation-design:${VERSION:-latest}
+    container_name: evaluation-app
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    environment:
+      # MongoDB配置
+      XIAOJU_SURVEY_MONGO_URL: mongodb://${MONGO_INITDB_ROOT_USERNAME:-root}:${MONGO_INITDB_ROOT_PASSWORD:-k765g6hj}@mongo:27017/?authSource=admin
+      XIAOJU_SURVEY_MONGO_AUTH_SOURCE: ${XIAOJU_SURVEY_MONGO_AUTH_SOURCE:-admin}
+      XIAOJU_SURVEY_MONGO_DB_NAME: ${XIAOJU_SURVEY_MONGO_DB_NAME:-xiaojuSurvey}
+      
+      # Redis配置（可选）
+      XIAOJU_SURVEY_REDIS_HOST: redis
+      XIAOJU_SURVEY_REDIS_PORT: 6379
+      
+      # 应用配置
+      NODE_ENV: ${NODE_ENV:-production}
+      SERVER_ENV: ${SERVER_ENV:-production}
+      
+      # JWT配置
+      XIAOJU_SURVEY_JWT_SECRET: ${XIAOJU_SURVEY_JWT_SECRET:-xiaojuSurveyJwtSecret}
+      XIAOJU_SURVEY_JWT_EXPIRES_IN: ${XIAOJU_SURVEY_JWT_EXPIRES_IN:-8h}
+      
+      # 管理员配置
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-emojump.888}
+      
+      # AI模型配置（可选）
       AImodel_API_URL: ${AImodel_API_URL}
       AImodel_API_KEY: ${AImodel_API_KEY}
       AImodel_MODEL: ${AImodel_MODEL}
-    links:
-      - mongo:mongo
+      
+      # 评估管理后台配置
+      EVALUATION_ADMIN_SYSTEM_URL: ${EVALUATION_ADMIN_SYSTEM_URL:-http://localhost:48080/app-api}
+      EVALUATION_ADMIN_AES_ENCRYPT_SECRET_KEY: ${EVALUATION_ADMIN_AES_ENCRYPT_SECRET_KEY:-ansAesEncryptEvaluationSecretKey}
+      EVALUATION_ADMIN_CLIENT_ID: ${EVALUATION_ADMIN_CLIENT_ID:-xiaoju_survey_system}
+      EVALUATION_ADMIN_TENANT_ID: ${EVALUATION_ADMIN_TENANT_ID:-1}
+    
     depends_on:
-      - mongo
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
-      - xiaoju-survey
+      - evaluation-network
+    volumes:
+      - app-logs:/app/logs
+      - app-uploads:/app/uploads
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 volumes:
-  mongo-volume:
+  mongo-data:
+    driver: local
+  mongo-config:
+    driver: local
+  redis-data:
+    driver: local
+  app-logs:
+    driver: local
+  app-uploads:
+    driver: local
 
 networks:
-  xiaoju-survey:
-    name: xiaoju-survey
+  evaluation-network:
+    name: evaluation-network
     driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
