@@ -40,6 +40,7 @@ export const useSurveyStore = defineStore('survey', () => {
   const userId = ref('') // 用户id
   const assessmentNo = ref('') // 测评任务编号
   const questionId = ref('') // 问卷id
+  const redirectUrl = ref('') // 完成后重定向地址
 
   const router = useRouter()
   const questionStore = useQuestionStore()
@@ -71,6 +72,10 @@ export const useSurveyStore = defineStore('survey', () => {
 
   const setQuestionId = (data) => {
     questionId.value = data
+  }
+
+  const setRedirectUrl = (data) => {
+    redirectUrl.value = data
   }
 
   const getEncryptInfo = async () => {
@@ -303,6 +308,7 @@ export const useSurveyStore = defineStore('survey', () => {
     userId,
     assessmentNo,
     questionId,
+    redirectUrl,
     initSurvey,
     changeData,
     setWhiteData,
@@ -312,6 +318,7 @@ export const useSurveyStore = defineStore('survey', () => {
     setUserId,
     setAssessmentNo,
     setQuestionId,
+    setRedirectUrl,
     getEncryptInfo,
     showLogicEngine,
     initShowLogicEngine,

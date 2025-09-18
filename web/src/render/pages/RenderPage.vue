@@ -187,7 +187,11 @@ const submitSurvey = async () => {
       // 提交成功后清空作答数据
       clearSurveyData(surveyPath.value, surveyStore.userId)
       clearSurveySubmit(surveyPath.value, surveyStore.userId)
-      // 提交成功后已清空本地作答数据
+      
+      // 清理sessionStorage中的参数缓存
+      const sessionKey = `survey_params_${surveyPath.value}`
+      sessionStorage.removeItem(sessionKey)
+      console.log('清理缓存参数')
       
       // 前端回调已移至后端处理，确保数据格式统一和计算结果包含
       // 注释原因：
@@ -255,7 +259,18 @@ const submitSurvey = async () => {
         questionId: surveyStore.questionId,
         surveyPath: surveyPath.value,
       })
-      router.replace({ name: 'successPage' })
+      
+      // 检查是否有重定向URL
+      if (surveyStore.redirectUrl) {
+        console.log('重定向到:', surveyStore.redirectUrl)
+        // 延迟一秒让用户看到成功提示，然后重定向
+        setTimeout(() => {
+          window.location.href = surveyStore.redirectUrl
+        }, 1000)
+      } else {
+        // 没有重定向URL时，跳转到成功页面
+        router.replace({ name: 'successPage' })
+      }
     } else {
       alert({
         title: res.errmsg || '提交失败'

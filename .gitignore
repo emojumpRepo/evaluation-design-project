@@ -37,3 +37,4 @@ lib
 .expo
 
 .claude/
+test-callback/callback-logs.json
