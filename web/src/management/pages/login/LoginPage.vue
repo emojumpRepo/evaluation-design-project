@@ -84,12 +84,12 @@
               登录
             </el-button>
 
-            <div class="register-section">
+            <!-- <div class="register-section">
               <span class="register-text">还没有账户？</span>
               <el-button :loading="pending.register" text class="register-btn" @click="submitForm('register')">
                 立即注册
               </el-button>
-            </div>
+            </div> -->
           </div>
         </el-form>
       </div>
