@@ -195,7 +195,7 @@ const editorOptions = {
 
 // 生成代码模板
 const generateCodeTemplate = () => {
-  const hasScoreQuestions = questionList.value.some(q => q.hasScore)
+  const hasScoreQuestions = questionList.value.some((q: any) => q.hasScore)
   const firstQuestion = questionList.value[0]
   
   let template = '// 自动生成的计算代码模板\n'
@@ -488,7 +488,7 @@ const loadSampleData = () => {
   const sampleAnswers: any = {}
   
   // 从当前问卷生成示例数据
-  const dataList = schema.questionDataList || schema.dataConf?.dataList || []
+  const dataList = schema.questionDataList || (schema as any).dataConf?.dataList || []
   
   if (dataList && dataList.length > 0) {
     dataList.forEach((question: any) => {
@@ -576,7 +576,7 @@ const loadSampleData = () => {
 // 获取题目信息用于展示
 const questionList = computed(() => {
   // 先尝试从 questionDataList 获取（编辑时的数据）
-  const dataList = schema.questionDataList || schema.dataConf?.dataList || []
+  const dataList = schema.questionDataList || (schema as any).dataConf?.dataList || []
   
   if (!dataList || dataList.length === 0) {
     console.log('No questions found in schema:', schema)
@@ -628,11 +628,11 @@ const testCalculate = async () => {
     try {
       formData = JSON.parse(testData.value)
     } catch (e) {
-      throw new Error('测试数据格式错误：' + e.message)
+      throw new Error('测试数据格式错误：' + (e as Error).message)
     }
     
     // 准备问题数据 - 使用正确的数据源
-    const questions = schema.questionDataList || schema.dataConf?.dataList || []
+    const questions = schema.questionDataList || (schema as any).dataConf?.dataList || []
     
     // 创建安全的执行环境
     const executeCode = new Function('formData', 'questions', calculateConfig.value.code)
