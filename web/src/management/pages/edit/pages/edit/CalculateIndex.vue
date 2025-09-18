@@ -627,7 +627,7 @@ const testCalculate = async () => {
     let formData
     try {
       formData = JSON.parse(testData.value)
-    } catch (e) {
+    } catch (e: any) {
       throw new Error('测试数据格式错误：' + (e as Error).message)
     }
     
