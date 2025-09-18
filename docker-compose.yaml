@@ -26,8 +26,7 @@ services:
     environment:
       XIAOJU_SURVEY_MONGO_URL: mongodb://${MONGO_INITDB_ROOT_USERNAME:-admin}:${MONGO_INITDB_ROOT_PASSWORD:-emojump.888}@xiaoju-survey-mongo:27017/admin?authSource=admin
       XIAOJU_SURVEY_MONGO_AUTH_SOURCE: admin
-      XIAOJU_SURVEY_MONGO_DB_NAME: xiaoju_survey
-      XIAOJU_SURVEY_MONGO_AUTH_SOURCE: ${XIAOJU_SURVEY_MONGO_AUTH_SOURCE} # 如使用mongo官方镜像，并且设置了MONGO_INITDB_ROOT_USERNAME和MONGO_INITDB_ROOT_PASSWORD，默认值是admin
+      XIAOJU_SURVEY_MONGO_DB_NAME: ${XIAOJU_SURVEY_MONGO_DB_NAME} # 如使用mongo官方镜像，并且设置了MONGO_INITDB_ROOT_USERNAME和MONGO_INITDB_ROOT_PASSWORD，默认值是admin
       AImodel_API_URL: ${AImodel_API_URL}
       AImodel_API_KEY: ${AImodel_API_KEY}
       AImodel_MODEL: ${AImodel_MODEL}
