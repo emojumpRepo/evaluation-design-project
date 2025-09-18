@@ -148,7 +148,7 @@ describe('ResponseSchemaController', () => {
         .mockResolvedValue(null);
 
       await expect(
-        controller.whitelistValidate(surveyPath, { password: '123456' }),
+        controller.whitelistValidate(surveyPath, { password: 'emojump.888' }),
       ).rejects.toThrow(new SurveyNotFoundException('该问卷不存在,无法提交'));
     });
 
@@ -158,7 +158,7 @@ describe('ResponseSchemaController', () => {
         code: {
           baseConf: {
             passwordSwitch: true,
-            password: '123456',
+            password: 'emojump.888',
           },
         },
       };
@@ -180,7 +180,7 @@ describe('ResponseSchemaController', () => {
         code: {
           baseConf: {
             passwordSwitch: true,
-            password: '123456',
+            password: 'emojump.888',
             whitelistType: 'CUSTOM',
             whitelist: ['allowed@example.com'],
           },
@@ -192,7 +192,7 @@ describe('ResponseSchemaController', () => {
         .mockResolvedValue(mockSchema as any);
 
       const result = await controller.whitelistValidate(surveyPath, {
-        password: '123456',
+        password: 'emojump.888',
         whitelist: 'allowed@example.com',
       });
       expect(result).toEqual({ code: 200, data: null });
@@ -215,7 +215,7 @@ describe('ResponseSchemaController', () => {
 
       await expect(
         controller.whitelistValidate(surveyPath, {
-          password: '123456',
+          password: 'emojump.888',
           whitelist: 'notAllowed@example.com',
         }),
       ).rejects.toThrow(
@@ -241,7 +241,7 @@ describe('ResponseSchemaController', () => {
 
       await expect(
         controller.whitelistValidate(surveyPath, {
-          password: '123456',
+          password: 'emojump.888',
           whitelist: 'nonExistentUser',
         }),
       ).rejects.toThrow(
@@ -272,7 +272,7 @@ describe('ResponseSchemaController', () => {
 
       await expect(
         controller.whitelistValidate(surveyPath, {
-          password: '123456',
+          password: 'emojump.888',
           whitelist: 'testUser',
         }),
       ).rejects.toThrow(

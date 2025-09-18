@@ -208,7 +208,7 @@ describe('SurveyResponseController', () => {
             data515: '115019',
             data450: '450111000000000000',
             data405: '浙江省杭州市西湖区xxx',
-            data770: '123456@qq.com',
+            data770: 'emojump.888@qq.com',
           },
           optionTextAndId: {
             data515: [
@@ -254,7 +254,7 @@ describe('SurveyResponseController', () => {
           data450: '450111000000000000',
           data458: '15000000000',
           data515: '115019',
-          data770: '123456@qq.com',
+          data770: 'emojump.888@qq.com',
         },
         clientTime: reqBody.clientTime,
         diffTime: reqBody.diffTime,
@@ -359,7 +359,7 @@ describe('SurveyResponseController', () => {
           code: {
             baseConf: {
               passwordSwitch: true,
-              password: '123456',
+              password: 'emojump.888',
             },
           },
         } as ResponseSchema);

@@ -6,7 +6,7 @@ services:
     restart: always
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-admin} # 默认使用系统的环境变量，如果没有则使用admin
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:-123456} # 默认使用系统的环境变量，如果没有则使用123456
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:-emojump.888} # 默认使用系统的环境变量，如果没有则使用emojump.888
     ports:
       - "27017:27017" # 数据库端口
     volumes:
@@ -24,7 +24,7 @@ services:
     ports:
       - "8080:8080" # API端口
     environment:
-      XIAOJU_SURVEY_MONGO_URL: mongodb://${MONGO_INITDB_ROOT_USERNAME:-admin}:${MONGO_INITDB_ROOT_PASSWORD:-123456}@xiaoju-survey-mongo:27017/admin?authSource=admin
+      XIAOJU_SURVEY_MONGO_URL: mongodb://${MONGO_INITDB_ROOT_USERNAME:-admin}:${MONGO_INITDB_ROOT_PASSWORD:-emojump.888}@xiaoju-survey-mongo:27017/admin?authSource=admin
       XIAOJU_SURVEY_MONGO_AUTH_SOURCE: admin
       XIAOJU_SURVEY_MONGO_DB_NAME: xiaoju_survey
       XIAOJU_SURVEY_MONGO_AUTH_SOURCE: ${XIAOJU_SURVEY_MONGO_AUTH_SOURCE} # 如使用mongo官方镜像，并且设置了MONGO_INITDB_ROOT_USERNAME和MONGO_INITDB_ROOT_PASSWORD，默认值是admin
