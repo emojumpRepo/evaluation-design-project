@@ -11,8 +11,8 @@ COPY web/package*.json /builder/web/
 COPY server/package*.json /builder/server/
 
 # 安装依赖（利用缓存）
-RUN cd /builder/web && npm ci --only=production && \
-    cd /builder/server && npm ci
+RUN cd /builder/web && npm install && \
+    cd /builder/server && npm install
 
 # 复制源代码
 COPY web/ /builder/web/
@@ -46,14 +46,17 @@ COPY --from=builder --chown=nodejs:nodejs /builder/server/package*.json /app/ser
 # 复制配置文件
 COPY --chown=nodejs:nodejs docker-run.sh /app/docker-run.sh
 COPY --chown=nodejs:nodejs nginx/nginx.conf /etc/nginx/nginx.conf
-COPY --chown=nodejs:nodejs server/.env* /app/server/
 
 # 设置执行权限
 RUN chmod +x /app/docker-run.sh
 
+# 创建必要的目录并设置权限
+RUN mkdir -p /app/logs /app/uploads && \
+    chown -R nodejs:nodejs /app
+
 # 健康检查
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8080/api/health || exit 1
+    CMD curl -f http://localhost:3000/api/survey/health || exit 1
 
 # 暴露端口
 EXPOSE 8080

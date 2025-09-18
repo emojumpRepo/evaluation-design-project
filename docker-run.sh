@@ -6,16 +6,10 @@ echo "========================================="
 echo "Starting Evaluation Design Application"
 echo "========================================="
 
-# 颜色定义
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
-
 # 检查目录是否存在
 check_directory() {
     if [ ! -d "$1" ]; then
-        echo "${RED}Error: $1 directory not found${NC}"
+        echo "Error: $1 directory not found"
         exit 1
     fi
 }
@@ -23,33 +17,23 @@ check_directory() {
 # 检查文件是否存在
 check_file() {
     if [ ! -f "$1" ]; then
-        echo "${RED}Error: $1 file not found${NC}"
+        echo "Error: $1 file not found"
         exit 1
     fi
 }
 
-# 打印状态信息
-print_status() {
-    echo "${GREEN}✓${NC} $1"
-}
-
-# 打印警告信息
-print_warning() {
-    echo "${YELLOW}⚠${NC} $1"
-}
-
 # 检查必要的目录和文件
-print_status "Checking application directories..."
+echo "Checking application directories..."
 check_directory "/app/server"
 check_directory "/app/web"
 check_directory "/app/server/dist"
 check_directory "/app/web/dist"
 
-print_status "Checking backend build files..."
+echo "Checking backend build files..."
 check_file "/app/server/dist/main.js"
 
 # 设置环境变量
-print_status "Setting up environment variables..."
+echo "Setting up environment variables..."
 export NODE_ENV=${NODE_ENV:-production}
 export PORT=3000
 
@@ -59,10 +43,10 @@ echo "  MongoDB: ${XIAOJU_SURVEY_MONGO_URL:-Not configured}"
 
 # 创建日志目录
 mkdir -p /app/logs
-print_status "Log directory created at /app/logs"
+echo "Log directory created at /app/logs"
 
 # 启动后端服务
-print_status "Starting backend service..."
+echo "Starting backend service..."
 cd /app/server
 
 # 使用 node 直接运行，避免 npm 脚本权限问题
@@ -75,8 +59,8 @@ MAX_RETRIES=30
 RETRY_COUNT=0
 
 while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-    if curl -f http://localhost:3000/api/health >/dev/null 2>&1; then
-        print_status "Backend is running (PID: $BACKEND_PID)"
+    if curl -f http://localhost:3000/api/survey/health >/dev/null 2>&1; then
+        echo "Backend is running (PID: $BACKEND_PID)"
         break
     fi
     RETRY_COUNT=$((RETRY_COUNT + 1))
@@ -85,16 +69,16 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
 done
 
 if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
-    echo "${RED}Error: Backend failed to start within 60 seconds${NC}"
+    echo "Error: Backend failed to start within 60 seconds"
     echo "Backend logs:"
     tail -n 50 /app/logs/backend.log
     exit 1
 fi
 
 # 配置 nginx（处理用户权限问题）
-print_status "Configuring nginx..."
+echo "Configuring nginx..."
 if [ "$(id -u)" != "0" ]; then
-    print_warning "Running as non-root user, adjusting nginx configuration..."
+    echo "Running as non-root user, adjusting nginx configuration..."
     # 创建用户可写的临时目录
     mkdir -p /tmp/nginx
     mkdir -p /tmp/nginx/client_body_temp
@@ -109,9 +93,9 @@ if [ "$(id -u)" != "0" ]; then
 fi
 
 # 启动 nginx
-print_status "Starting nginx..."
+echo "Starting nginx..."
 echo "========================================="
-echo "${GREEN}Application started successfully!${NC}"
+echo "Application started successfully!"
 echo "Access the application at: http://localhost:8080"
 echo "========================================="
 
