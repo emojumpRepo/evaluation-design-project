@@ -8,6 +8,9 @@ export class CreateSurveyDto {
   @ApiProperty({ description: '问卷备注', required: false })
   remark: string;
 
+  @ApiProperty({ description: '问卷编码', required: false })
+  surveyCode?: string;
+
   @ApiProperty({ description: '问卷类型，复制问卷必传', required: false })
   surveyType: string;
 
@@ -33,6 +36,7 @@ export class CreateSurveyDto {
     return Joi.object({
       title: Joi.string().required(),
       remark: Joi.string().allow(null, '').default(''),
+      surveyCode: Joi.string().required(),
       surveyType: Joi.string().when('createMethod', {
         is: 'copy',
         then: Joi.allow(null),

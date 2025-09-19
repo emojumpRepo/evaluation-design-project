@@ -48,6 +48,7 @@ export class SurveyMetaController {
     const { value, error } = Joi.object({
       title: Joi.string().required(),
       remark: Joi.string().allow(null, '').default(''),
+      surveyCode: Joi.string().required(),
       surveyId: Joi.string().required(),
       groupId: Joi.string().allow(null, ''),
     }).validate(reqBody, { allowUnknown: true });
@@ -59,6 +60,7 @@ export class SurveyMetaController {
     const survey = req.surveyMeta;
     survey.title = value.title;
     survey.remark = value.remark;
+    survey.surveyCode = value.surveyCode;
     survey.groupId =
       value.groupId && value.groupId !== '' ? value.groupId : null;
 

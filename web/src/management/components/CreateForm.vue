@@ -15,6 +15,14 @@
       />
       <p class="form-item-tip">该标题可在打开问卷的浏览器顶部展示</p>
     </el-form-item>
+    <el-form-item prop="surveyCode" label="问卷编码">
+      <el-input
+        v-model="form.surveyCode"
+        :class="form.surveyCode ? 'nonempty' : 'empty'"
+        placeholder="请输入问卷编码"
+      />
+      <p class="form-item-tip">问卷编码是问卷的唯一标识，要确保唯一性</p>
+    </el-form-item>
     <el-form-item prop="remark" label="问卷备注">
       <el-input
         v-model="form.remark"
@@ -75,6 +83,7 @@ const state = reactive({
   form: {
     title: '问卷调研',
     remark: '问卷调研',
+      surveyCode: '',
     surveyType: 'normal',
     groupId: props.groupId === GroupState.All || props.groupId === GroupState.Not ? '' : props.groupId
   }

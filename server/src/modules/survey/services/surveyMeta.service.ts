@@ -42,6 +42,7 @@ export class SurveyMetaService {
   async createSurveyMeta(params: {
     title: string;
     remark: string;
+    surveyCode?: string;
     surveyType: string;
     username: string;
     userId: string;
@@ -54,6 +55,7 @@ export class SurveyMetaService {
     const {
       title,
       remark,
+      surveyCode,
       surveyType,
       username,
       createMethod,
@@ -67,6 +69,7 @@ export class SurveyMetaService {
     const newSurvey = this.surveyRepository.create({
       title,
       remark: remark || '',
+      surveyCode: surveyCode || '',
       surveyType: surveyType,
       surveyPath,
       creator: username,

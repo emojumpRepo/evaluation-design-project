@@ -80,7 +80,7 @@ export class SurveyController {
       throw new HttpException('参数错误', EXCEPTION_CODE.PARAMETER_ERROR);
     }
 
-    const { title, remark, createMethod, createFrom, groupId, questionList, isCollaborated } =
+    const { title, remark, surveyCode, createMethod, createFrom, groupId, questionList, isCollaborated } =
       value;
 
     let surveyType = '',
@@ -97,6 +97,7 @@ export class SurveyController {
     const surveyMeta = await this.surveyMetaService.createSurveyMeta({
       title,
       remark,
+      surveyCode,
       surveyType,
       username: req.user.username,
       userId: req.user._id.toString(),
@@ -402,6 +403,7 @@ export class SurveyController {
       data: {
         ...surveyConf,
         title: surveyMeta?.title,
+        surveyCode: surveyMeta?.surveyCode,
         surveyPath: surveyMeta?.surveyPath,
       },
     };
@@ -520,6 +522,7 @@ export class SurveyController {
       const surveyId = surveyMeta._id.toString();
       return {
         surveyMetaId: surveyMeta._id.toString(),
+        surveyCode: surveyMeta.surveyCode,
         createdAt: surveyMeta.createdAt,
         updatedAt: surveyMeta.updatedAt,
         title: surveyMeta.title,
