@@ -4,7 +4,6 @@ services:
   # MongoDB数据库
   mongo:
     image: mongo:7.0
-    container_name: evaluation-mongo
     environment:
       MONGO_INITDB_ROOT_USERNAME: root
       MONGO_INITDB_ROOT_PASSWORD: k765g6hj
@@ -19,7 +18,6 @@ services:
   # 生产模式 - 使用Dockerfile构建
   app:
     build: .
-    container_name: evaluation-app
     ports:
       - "8080:8080"
     environment:
