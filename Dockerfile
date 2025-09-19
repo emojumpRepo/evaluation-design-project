@@ -36,9 +36,14 @@ COPY --from=builder /app/server/package*.json ./server/
 # 复制nginx配置
 COPY nginx/nginx.conf /etc/nginx/nginx.conf
 
+# 确保文件权限正确
+RUN chmod -R 755 /app/web/dist
+
 # 创建启动脚本
 RUN echo '#!/bin/sh' > /app/start.sh && \
+    echo 'echo "Starting nginx..."' >> /app/start.sh && \
     echo 'nginx' >> /app/start.sh && \
+    echo 'echo "Starting Node.js server..."' >> /app/start.sh && \
     echo 'cd /app/server && node dist/main.js' >> /app/start.sh && \
     chmod +x /app/start.sh
 
