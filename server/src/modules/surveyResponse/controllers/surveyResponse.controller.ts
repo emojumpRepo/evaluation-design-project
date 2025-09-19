@@ -68,6 +68,8 @@ export class SurveyResponseController {
     let originalAssessmentId = '';
     let encryptQuestionId = '';
     let originalQuestionId = '';
+    
+    // 处理加密数据（数组格式）
     if (
       encryptType === ENCRYPT_TYPE.RSA &&
       Array.isArray(data) &&
@@ -82,11 +84,17 @@ export class SurveyResponseController {
         sessionId,
       );
       encryptQuestionId = await this.getDecryptedDataRSA(questionId, sessionId);
+      formValues = JSON.parse(JSON.stringify(result));
+      originalUserId = encryptUserId;
+      originalAssessmentId = encryptAssessmentId;
+      originalQuestionId = encryptQuestionId;
+    } else {
+      // 处理非加密数据（字符串格式）
+      formValues = JSON.parse(JSON.stringify(result));
+      originalUserId = userId || '';
+      originalAssessmentId = assessmentId || '';
+      originalQuestionId = questionId || '';
     }
-    formValues = JSON.parse(JSON.stringify(result));
-    originalUserId = encryptUserId;
-    originalAssessmentId = encryptAssessmentId;
-    originalQuestionId = encryptQuestionId;
     try {
       const responseData = await this.createResponseProcess({
         ...value,
@@ -153,9 +161,18 @@ export class SurveyResponseController {
       diffTime: Joi.number(),
       password: Joi.string().allow(null, ''),
       whitelist: Joi.string().allow(null, ''),
-      userId: Joi.array().items(Joi.string()).allow(null, ''),
-      assessmentId: Joi.array().items(Joi.string()).allow(null, ''),
-      questionId: Joi.array().items(Joi.string()).allow(null, ''),
+      userId: Joi.alternatives().try(
+        Joi.array().items(Joi.string()),
+        Joi.string().allow(null, '')
+      ),
+      assessmentId: Joi.alternatives().try(
+        Joi.array().items(Joi.string()),
+        Joi.string().allow(null, '')
+      ),
+      questionId: Joi.alternatives().try(
+        Joi.array().items(Joi.string()),
+        Joi.string().allow(null, '')
+      ),
     }).validate(reqBody, { allowUnknown: true });
 
     if (error) {
