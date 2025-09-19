@@ -187,7 +187,71 @@ const submitSurvey = async () => {
       // 提交成功后清空作答数据
       clearSurveyData(surveyPath.value, surveyStore.userId)
       clearSurveySubmit(surveyPath.value, surveyStore.userId)
-      // 提交成功后已清空本地作答数据
+      
+      // 清理sessionStorage中的参数缓存
+      const sessionKey = `survey_params_${surveyPath.value}`
+      sessionStorage.removeItem(sessionKey)
+      console.log('清理缓存参数')
+      
+      // 前端回调已移至后端处理，确保数据格式统一和计算结果包含
+      // 注释原因：
+      // 1. 后端可以包含计算结果
+      // 2. 统一的数据格式
+      // 3. 更好的错误处理和重试机制
+      /*
+      // 处理前端回调
+      const callbackConfig = (surveyStore.submitConf as any).callbackConfig
+      if (callbackConfig?.enabled && callbackConfig?.url) {
+        try {
+          // 执行前端回调
+          const callbackData = {
+            surveyPath: surveyPath.value,
+            userId: surveyStore.userId,
+            assessmentNo: surveyStore.assessmentNo,
+            questionId: surveyStore.questionId,
+            formData: surveyStore.formValues,
+            responseId: res.data?.responseId,
+            timestamp: Date.now()
+          }
+          
+          // 如果配置了前端回调，发送请求
+          let headers: any = {
+            'Content-Type': 'application/json'
+          }
+          
+          // 如果启用了自定义headers
+          if (callbackConfig.headersEnabled && callbackConfig.headers) {
+            try {
+              const customHeaders = JSON.parse(callbackConfig.headers)
+              headers = { ...headers, ...customHeaders }
+            } catch (e) {
+              console.error('解析自定义headers失败:', e)
+            }
+          }
+          
+          const timeout = (parseInt(callbackConfig.timeout) || 10) * 1000
+          
+          const controller = new AbortController()
+          const timeoutId = setTimeout(() => controller.abort(), timeout)
+          
+          const callbackRes = await fetch(callbackConfig.url, {
+            method: callbackConfig.method || 'POST',
+            headers,
+            body: callbackConfig.method === 'GET' ? undefined : JSON.stringify(callbackData),
+            signal: controller.signal
+          })
+          
+          clearTimeout(timeoutId)
+          
+          if (!callbackRes.ok) {
+            console.error('回调请求失败:', callbackRes.status)
+          }
+        } catch (callbackError) {
+          // 回调失败不影响问卷提交
+          console.error('回调执行失败:', callbackError)
+        }
+      }
+      */
       
       notifyComplete({
         userId: surveyStore.userId,
@@ -195,7 +259,18 @@ const submitSurvey = async () => {
         questionId: surveyStore.questionId,
         surveyPath: surveyPath.value,
       })
-      router.replace({ name: 'successPage' })
+      
+      // 检查是否有重定向URL
+      if (surveyStore.redirectUrl) {
+        console.log('重定向到:', surveyStore.redirectUrl)
+        // 延迟一秒让用户看到成功提示，然后重定向
+        setTimeout(() => {
+          window.location.href = surveyStore.redirectUrl
+        }, 1000)
+      } else {
+        // 没有重定向URL时，跳转到成功页面
+        router.replace({ name: 'successPage' })
+      }
     } else {
       alert({
         title: res.errmsg || '提交失败'

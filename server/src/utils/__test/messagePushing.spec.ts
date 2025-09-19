@@ -18,7 +18,7 @@ describe('getPushingData', () => {
         data515: '115019',
         data450: '450111000000000000',
         data405: '浙江省杭州市西湖区xxx',
-        data770: '123456@qq.com',
+        data770: 'emojump.888@qq.com',
       },
       optionTextAndId: {
         data515: [
@@ -147,7 +147,7 @@ describe('getPushingData', () => {
           title: '<p>邮箱</p>',
           valueType: 'text',
           alias: '',
-          value: ['123456@qq.com'],
+          value: ['emojump.888@qq.com'],
         },
       ],
     });

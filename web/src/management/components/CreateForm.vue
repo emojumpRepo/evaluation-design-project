@@ -47,8 +47,8 @@
       </el-select>
     </el-form-item>
     <el-form-item>
-      <el-button @click="onCancel">取消</el-button>
-          <el-button type="primary" @click="onConfirm">确认</el-button>
+      <el-button @click="onCancel" :disabled="loading">取消</el-button>
+      <el-button type="primary" @click="onConfirm" :loading="loading">确认</el-button>
     </el-form-item>
   </el-form>
 </template>
@@ -59,7 +59,10 @@ import { useWorkSpaceStore } from '@/management/stores/workSpace'
 import { storeToRefs } from 'pinia';
 import { SURVEY_TYPE_LIST } from '../pages/create/types';
 
-const emit = defineEmits(['cancel', 'confirm'])
+const emit = defineEmits<{
+  cancel: []
+  confirm: [formData: any, callback: (success: boolean) => void]
+}>()
 
 const props = defineProps({
   groupId: {
@@ -69,6 +72,7 @@ const props = defineProps({
 })
 
 const ruleForm = ref<any>(null)
+const loading = ref(false)
 
 const workSpaceStore = useWorkSpaceStore()
 workSpaceStore.getGroupList()
@@ -97,7 +101,10 @@ const onCancel = () => {
 const onConfirm = () => {
   ruleForm?.value?.validate(async (valid: boolean) => {
     if (valid) {
-      emit('confirm', { ...form.value })
+      loading.value = true
+      emit('confirm', { ...form.value }, (success: boolean) => {
+        loading.value = false
+      })
     }
   })
 }

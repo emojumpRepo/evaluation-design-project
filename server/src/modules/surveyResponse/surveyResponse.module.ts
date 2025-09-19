@@ -1,5 +1,6 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { MessageModule } from '../message/message.module';
+import { SurveyModule } from '../survey/survey.module';
 
 import { ResponseSchemaService } from './services/responseScheme.service';
 import { SurveyResponseService } from './services/surveyResponse.service';
@@ -35,6 +36,7 @@ import { AppManagerService } from '../appManager/services/appManager.service';
     ]),
     ConfigModule,
     MessageModule,
+    forwardRef(() => SurveyModule),
     // RedisModule,
     AuthModule,
     WorkspaceModule,

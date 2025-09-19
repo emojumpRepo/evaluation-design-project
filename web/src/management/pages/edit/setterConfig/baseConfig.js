@@ -20,5 +20,18 @@ export default [
       'white_list',
       'team_list'
     ]
+  },
+  {
+    title: '回调配置',
+    key: 'callbackConfig',
+    formList: [
+      'callback_enabled',
+      'callback_url',
+      'callback_method',
+      'callback_timeout',
+      'callback_retryCount',
+      'callback_headers_enabled',
+      'callback_headers'
+    ]
   }
 ]

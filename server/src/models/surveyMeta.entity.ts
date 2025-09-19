@@ -82,6 +82,9 @@ export class SurveyMeta extends BaseEntity {
   // 虚拟字段，用于标识当前用户ID
   currentUserId?: string;
 
+  @Column()
+  isCompleteDeleted: boolean;
+
   @BeforeInsert()
   initDefaultInfo() {
     const now = Date.now();

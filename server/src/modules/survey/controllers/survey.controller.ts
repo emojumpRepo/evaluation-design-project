@@ -8,6 +8,8 @@ import {
   UseGuards,
   Request,
   SetMetadata,
+  UseInterceptors,
+  UploadedFiles,
 } from '@nestjs/common';
 import * as Joi from 'joi';
 import { ApiTags } from '@nestjs/swagger';
@@ -34,6 +36,15 @@ import { WorkspaceGuard } from 'src/guards/workspace.guard';
 import { PERMISSION as WORKSPACE_PERMISSION } from 'src/enums/workspace';
 import { SessionService } from '../services/session.service';
 import { UserService } from 'src/modules/auth/services/user.service';
+
+import { FilesInterceptor } from '@nestjs/platform-express';
+import * as XLSX from 'xlsx';
+
+interface ExcelQuestion {
+  title: string;
+  type: string;
+  options: string;
+}
 
 @ApiTags('survey')
 @Controller('/api/survey')
@@ -271,6 +282,60 @@ export class SurveyController {
   }
 
   @HttpCode(200)
+  @Post('/recoverSurvey')
+  @UseGuards(SurveyGuard)
+  @SetMetadata('surveyId', 'body.surveyId')
+  @SetMetadata('surveyPermission', [SURVEY_PERMISSION.SURVEY_CONF_MANAGE])
+  @UseGuards(Authentication)
+  async recoverSurvey(@Request() req) {
+    const surveyMeta = req.surveyMeta;
+
+    const delMetaRes = await this.surveyMetaService.recoverSurveyMeta({
+      surveyId: surveyMeta._id.toString(),
+      operator: req.user.username,
+      operatorId: req.user._id.toString(),
+    });
+    const delResponseRes =
+      await this.responseSchemaService.recoverResponseSchema({
+        surveyPath: surveyMeta.surveyPath,
+      });
+
+    this.logger.info(JSON.stringify(delMetaRes));
+    this.logger.info(JSON.stringify(delResponseRes));
+
+    return {
+      code: 200,
+    };
+  }
+
+  @HttpCode(200)
+  @Post('/completeDeleteSurvey')
+  @UseGuards(SurveyGuard)
+  @SetMetadata('surveyId', 'body.surveyId')
+  @SetMetadata('surveyPermission', [SURVEY_PERMISSION.SURVEY_CONF_MANAGE])
+  @UseGuards(Authentication)
+  async completeDeleteSurvey(@Request() req) {
+    const surveyMeta = req.surveyMeta;
+
+    const delMetaRes = await this.surveyMetaService.completeDeleteSurveyMeta({
+      surveyId: surveyMeta._id.toString(),
+      operator: req.user.username,
+      operatorId: req.user._id.toString(),
+    });
+    const delResponseRes =
+      await this.responseSchemaService.completeDeleteResponseSchema({
+        surveyPath: surveyMeta.surveyPath,
+      });
+
+    this.logger.info(JSON.stringify(delMetaRes));
+    this.logger.info(JSON.stringify(delResponseRes));
+
+    return {
+      code: 200,
+    };
+  }
+
+  @HttpCode(200)
   @Post('/pausingSurvey')
   @UseGuards(SurveyGuard)
   @SetMetadata('surveyId', 'body.surveyId')
@@ -331,6 +396,12 @@ export class SurveyController {
 
     const surveyId = value.surveyId;
     const surveyMeta = req.surveyMeta;
+    if (surveyMeta.isDeleted) {
+      throw new HttpException(
+        '问卷不存在或已删除',
+        EXCEPTION_CODE.RESPONSE_SCHEMA_REMOVED,
+      );
+    }
     const surveyConf =
       await this.surveyConfService.getSurveyConfBySurveyId(surveyId);
 
@@ -545,5 +616,130 @@ export class SurveyController {
       code: 200,
       data: result,
     };
+  }
+
+  @Post('/getExcelQuestions')
+  @HttpCode(200)
+  @UseInterceptors(FilesInterceptor('files'))
+  async getExcelQuestions(@UploadedFiles() files: Express.Multer.File[]) {
+    try {
+      let validationError = '';
+      const allQuestions: ExcelQuestion[] = [];
+
+      // 验证每个文件
+      for (const file of files) {
+        validationError = this.validateExcelFile(file).errorType;
+        if (validationError) {
+          break;
+        }
+
+        // 解析文件内容
+        const questions = this.parseExcelFile(file);
+        allQuestions.push(...questions);
+      }
+
+      // 如果有验证错误，返回错误信息
+      if (validationError) {
+        return {
+          code: 400,
+          message: '文件不通过校验',
+          error: validationError,
+        };
+      }
+
+      // 返回解析结果
+      return {
+        code: 200,
+        message: '上传成功',
+        data: {
+          questions: allQuestions,
+        },
+      };
+    } catch (error) {
+      this.logger.error(`getExcelQuestions error: ${error.message}`);
+      return {
+        code: 500,
+        message: '文件处理失败',
+        error: error.message,
+      };
+    }
+  }
+
+  private validateExcelFile(file: Express.Multer.File): {
+    errorType?: 'HEADER_FORMAT' | 'MERGED_CELLS' | 'SIZE_LIMIT' | '';
+  } {
+    const workbook = XLSX.read(file.buffer, { type: 'buffer' });
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
+
+    // 检查文件大小限制（行数和列数）
+    const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
+    const rowCount = range.e.r + 1; // 总行数
+    const colCount = range.e.c + 1; // 总列数
+
+    if (rowCount > 10000) {
+      return {
+        errorType: 'SIZE_LIMIT',
+      };
+    }
+
+    if (colCount > 3) {
+      return {
+        errorType: 'SIZE_LIMIT',
+      };
+    }
+
+    // 检查是否有合并单元格
+    if (worksheet['!merges'] && worksheet['!merges'].length > 0) {
+      return {
+        errorType: 'MERGED_CELLS',
+      };
+    }
+
+    // 检查表头格式
+    const headerA1 = worksheet['A1']?.v?.toString().trim();
+    const headerB1 = worksheet['B1']?.v?.toString().trim();
+    const headerC1 = worksheet['C1']?.v?.toString().trim();
+
+    if (
+      headerA1 !== '题目标题' ||
+      headerB1 !== '题型' ||
+      headerC1 !== '选项内容'
+    ) {
+      return {
+        errorType: 'HEADER_FORMAT',
+      };
+    }
+
+    return { errorType: '' };
+  }
+
+  private parseExcelFile(file: Express.Multer.File): ExcelQuestion[] {
+    const workbook = XLSX.read(file.buffer, { type: 'buffer' });
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
+
+    // 将工作表转换为JSON数组
+    const jsonData = XLSX.utils.sheet_to_json<ExcelQuestion>(worksheet, {
+      header: ['title', 'type', 'options'],
+      range: 1, // 从第二行开始读取数据
+    });
+
+    const questions: ExcelQuestion[] = [];
+
+    for (const row of jsonData) {
+      // 过滤空行
+      if (!row.title && !row.type && !row.options) {
+        continue;
+      }
+
+      questions.push({
+        title: (row.title || '').toString().trim(),
+        type: (row.type || '').toString().trim(),
+        options: (row.options || '').toString().trim(),
+      });
+    }
+
+    return questions;
   }
 }

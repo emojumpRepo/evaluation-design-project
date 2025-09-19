@@ -18,6 +18,8 @@ import { CollaboratorController } from './controllers/collaborator.controller';
 import { DownloadTaskController } from './controllers/downloadTask.controller';
 import { SessionController } from './controllers/session.controller';
 import { SurveyGroupController } from './controllers/surveyGroup.controller';
+import { RecycleBinController } from './controllers/recycleBin.controller';
+import { AIGenerateController } from './controllers/ai-generate.controller';
 
 import { SurveyConf } from 'src/models/surveyConf.entity';
 import { SurveyHistory } from 'src/models/surveyHistory.entity';
@@ -35,6 +37,9 @@ import { SurveyHistoryService } from './services/surveyHistory.service';
 import { SurveyMetaService } from './services/surveyMeta.service';
 import { ContentSecurityService } from './services/contentSecurity.service';
 import { CollaboratorService } from './services/collaborator.service';
+import { AIGenerateService } from './services/ai-generate.service';
+import { CalculateService } from './services/calculate.service';
+
 import { Counter } from 'src/models/counter.entity';
 import { CounterService } from '../surveyResponse/services/counter.service';
 import { FileService } from '../file/services/file.service';
@@ -42,6 +47,7 @@ import { DownloadTaskService } from './services/downloadTask.service';
 import { SessionService } from './services/session.service';
 import { SurveyGroupService } from './services/surveyGroup.service';
 import { Session } from 'src/models/session.entity';
+import { WorkspaceService } from '../workspace/services/workspace.service';
 
 @Module({
   imports: [
@@ -73,6 +79,8 @@ import { Session } from 'src/models/session.entity';
     DownloadTaskController,
     SessionController,
     SurveyGroupController,
+    RecycleBinController,
+    AIGenerateController,
   ],
   providers: [
     DataStatisticService,
@@ -88,6 +96,12 @@ import { Session } from 'src/models/session.entity';
     FileService,
     SessionService,
     SurveyGroupService,
+    WorkspaceService,
+    AIGenerateService,
+    CalculateService,
+  ],
+  exports: [
+    CalculateService,
   ],
 })
 export class SurveyModule {}

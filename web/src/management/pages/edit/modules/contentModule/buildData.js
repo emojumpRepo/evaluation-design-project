@@ -11,7 +11,8 @@ export default function (schema, sessionId) {
     'submitConf',
     'questionDataList',
     'pageConf',
-    'logicConf'
+    'logicConf',
+    'calculateConf'  // 添加计算配置
   ])
   configData.dataConf = {
     dataList: configData.questionDataList
