@@ -1,125 +1,43 @@
-version: "3.8"
+version: "3"
 
 services:
-  # MongoDB 数据库服务
+  # MongoDB数据库
   mongo:
-    image: mongo:7.0  # 使用更新的MongoDB版本
+    image: mongo:7.0
     container_name: evaluation-mongo
-    restart: unless-stopped
     environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-root}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:-k765g6hj}
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: k765g6hj
       MONGO_INITDB_DATABASE: xiaojuSurvey
     ports:
-      - "${MONGO_PORT:-27017}:27017"
+      - "27017:27017"
     volumes:
       - mongo-data:/data/db
-      - mongo-config:/data/configdb
-      - ./mongo-init:/docker-entrypoint-initdb.d:ro  # 初始化脚本
     networks:
-      - evaluation-network
-    healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 40s
+      - app-network
 
-  # Redis 缓存服务（可选）
-  redis:
-    image: redis:7-alpine
-    container_name: evaluation-redis
-    restart: unless-stopped
-    ports:
-      - "${REDIS_PORT:-6379}:6379"
-    volumes:
-      - redis-data:/data
-    networks:
-      - evaluation-network
-    command: redis-server --appendonly yes
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # 主应用服务
-  evaluation-app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        - NPM_REGISTRY=${NPM_REGISTRY:-https://registry.npmmirror.com}
-    image: evaluation-design:${VERSION:-latest}
+  # 生产模式 - 使用Dockerfile构建
+  app:
+    build: .
     container_name: evaluation-app
-    restart: unless-stopped
     ports:
-      - "${APP_PORT:-8080}:8080"
+      - "8080:8080"
     environment:
-      # MongoDB配置
-      XIAOJU_SURVEY_MONGO_URL: mongodb://${MONGO_INITDB_ROOT_USERNAME:-root}:${MONGO_INITDB_ROOT_PASSWORD:-k765g6hj}@mongo:27017/?authSource=admin
-      XIAOJU_SURVEY_MONGO_AUTH_SOURCE: ${XIAOJU_SURVEY_MONGO_AUTH_SOURCE:-admin}
-      XIAOJU_SURVEY_MONGO_DB_NAME: ${XIAOJU_SURVEY_MONGO_DB_NAME:-xiaojuSurvey}
-      
-      # Redis配置（可选）
-      XIAOJU_SURVEY_REDIS_HOST: redis
-      XIAOJU_SURVEY_REDIS_PORT: 6379
-      
-      # 应用配置
-      NODE_ENV: ${NODE_ENV:-production}
-      SERVER_ENV: ${SERVER_ENV:-production}
-      
-      # JWT配置
-      XIAOJU_SURVEY_JWT_SECRET: ${XIAOJU_SURVEY_JWT_SECRET:-xiaojuSurveyJwtSecret}
-      XIAOJU_SURVEY_JWT_EXPIRES_IN: ${XIAOJU_SURVEY_JWT_EXPIRES_IN:-8h}
-      
-      # 管理员配置
-      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-emojump.888}
-      
-      # AI模型配置（可选）
-      AImodel_API_URL: ${AImodel_API_URL}
-      AImodel_API_KEY: ${AImodel_API_KEY}
-      AImodel_MODEL: ${AImodel_MODEL}
-      
-      # 评估管理后台配置
-      EVALUATION_ADMIN_SYSTEM_URL: ${EVALUATION_ADMIN_SYSTEM_URL:-http://localhost:48080/app-api}
-      EVALUATION_ADMIN_AES_ENCRYPT_SECRET_KEY: ${EVALUATION_ADMIN_AES_ENCRYPT_SECRET_KEY:-ansAesEncryptEvaluationSecretKey}
-      EVALUATION_ADMIN_CLIENT_ID: ${EVALUATION_ADMIN_CLIENT_ID:-xiaoju_survey_system}
-      EVALUATION_ADMIN_TENANT_ID: ${EVALUATION_ADMIN_TENANT_ID:-1}
-    
+      XIAOJU_SURVEY_MONGO_URL: mongodb://root:k765g6hj@mongo:27017/?authSource=admin
+      XIAOJU_SURVEY_MONGO_AUTH_SOURCE: admin
+      XIAOJU_SURVEY_MONGO_DB_NAME: xiaojuSurvey
+      XIAOJU_SURVEY_JWT_SECRET: xiaojuSurveyJwtSecret
+      XIAOJU_SURVEY_JWT_EXPIRES_IN: 8h
+      ADMIN_USERNAME: admin
+      ADMIN_PASSWORD: emojump.888
+      NODE_ENV: production
     depends_on:
-      mongo:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - mongo
     networks:
-      - evaluation-network
-    volumes:
-      - app-logs:/app/logs
-      - app-uploads:/app/uploads
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+      - app-network
 
 volumes:
   mongo-data:
-    driver: local
-  mongo-config:
-    driver: local
-  redis-data:
-    driver: local
-  app-logs:
-    driver: local
-  app-uploads:
-    driver: local
 
 networks:
-  evaluation-network:
-    name: evaluation-network
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 172.20.0.0/16
+  app-network:

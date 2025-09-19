@@ -1,13 +1,10 @@
-# 开发环境 Docker Compose 配置
-# 使用方式: docker-compose -f docker-compose.dev.yaml up
-version: "3.8"
+version: "3"
 
 services:
-  # MongoDB 数据库服务
+  # MongoDB数据库
   mongo:
     image: mongo:7.0
     container_name: evaluation-mongo-dev
-    restart: unless-stopped
     environment:
       MONGO_INITDB_ROOT_USERNAME: root
       MONGO_INITDB_ROOT_PASSWORD: k765g6hj
@@ -15,36 +12,42 @@ services:
     ports:
       - "27017:27017"
     volumes:
-      - mongo-dev-data:/data/db
-      - mongo-dev-config:/data/configdb
+      - mongo-data-dev:/data/db
     networks:
-      - evaluation-dev-network
+      - app-network-dev
 
-  # Redis 缓存服务
-  redis:
-    image: redis:7-alpine
-    container_name: evaluation-redis-dev
-    restart: unless-stopped
-    ports:
-      - "6379:6379"
+  # 开发模式 - 直接挂载源码
+  app-dev:
+    image: node:18-alpine
+    container_name: evaluation-app-dev
+    working_dir: /app
     volumes:
-      - redis-dev-data:/data
+      - ./server:/app/server
+      - ./web:/app/web
+    ports:
+      - "3000:3000"  # 后端API
+      - "8080:8080"  # 前端
+    environment:
+      XIAOJU_SURVEY_MONGO_URL: mongodb://root:k765g6hj@mongo:27017/?authSource=admin
+      XIAOJU_SURVEY_MONGO_AUTH_SOURCE: admin
+      XIAOJU_SURVEY_MONGO_DB_NAME: xiaojuSurvey
+      NODE_ENV: development
     networks:
-      - evaluation-dev-network
-    command: redis-server --appendonly yes
-
-  # 开发环境不启动应用容器，使用本地开发
-  # 仅启动依赖服务（MongoDB 和 Redis）
+      - app-network-dev
+    depends_on:
+      - mongo
+    command: >
+      sh -c "
+        echo '启动后端服务...' &&
+        cd /app/server && npm install && npm run dev &
+        echo '等待后端启动...' &&
+        sleep 10 &&
+        echo '启动前端服务...' &&
+        cd /app/web && npm install && npm run dev --host
+      "
 
 volumes:
-  mongo-dev-data:
-    driver: local
-  mongo-dev-config:
-    driver: local
-  redis-dev-data:
-    driver: local
+  mongo-data-dev:
 
 networks:
-  evaluation-dev-network:
-    name: evaluation-dev-network
-    driver: bridge
+  app-network-dev:
