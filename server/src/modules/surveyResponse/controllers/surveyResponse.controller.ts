@@ -751,6 +751,7 @@ export class SurveyResponseController {
       const callbackData = {
         eventId: `evt_${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}${String(new Date().getDate()).padStart(2, '0')}${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`,
         questionnaireName: responseSchema.title || '问卷调查',
+        questionnaireId: surveyPath || responseSchema.pageId || '',
         questionnaireType: calculationResult?.scaleType ? this.extractScaleType(calculationResult.scaleType) : 'GENERAL',
         user: { 
           userId: originalUserId || 'anonymous',
