@@ -177,4 +177,5 @@ export interface SurveySchemaInterface {
   baseConf: BaseConf;
   skinConf: SkinConf;
   bottomConf: BottomConf;
+  pageConf?: number[];
 }

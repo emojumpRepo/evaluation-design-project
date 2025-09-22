@@ -130,13 +130,12 @@ import { ElMessage, ElDialog, ElButton, ElIcon} from 'element-plus'
 import { WarningFilled } from '@element-plus/icons-vue'
 import axios from 'axios'
 import type { UploadFile, UploadUserFile, UploadInstance } from 'element-plus'
-import { getMultiOptionByText } from "@/materials/questions/common/utils";
 import { getQuestionByType } from "@/management/utils";
 import { typeTagLabels, QUESTION_TYPE } from "@/common/typeEnum";
 
 
 const emit = defineEmits(['on-close-excel-import','on-excel-upload-success','on-show-create-form-excel-import']);
-const props = defineProps({
+defineProps({
   visible: Boolean
 })
 
@@ -193,12 +192,37 @@ const textTypeMap = (Object.keys(typeTagLabels) as Array<QUESTION_TYPE>).reduce(
   return pre
 }, {} as Record<string, string>)
 
+// HTML实体解码函数
+const decodeHtmlEntities = (text: string): string => {
+  return text
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
+}
+
 // 将后端返回的Excel解析数据转换为问卷格式的题目列表
-const excelToSchema = (excelQuestions: Array<{title: string, type: string, options: string}>) => {
+const excelToSchema = (excelQuestions: Array<{
+  title: string, 
+  type: string, 
+  options: string, 
+  scores?: string,
+  others?: string,
+  mustOthers?: string,
+  othersKey?: string,
+  placeholderDesc?: string,
+  isRequired?: string,
+  showIndex?: string,
+  showType?: string,
+  showSpliter?: string,
+  layout?: string,
+  quotaDisplay?: string
+}>) => {
   const questions = []
 
   for (const excelQuestion of excelQuestions) {
-    const { title, type, options } = excelQuestion
+    const { title, type, options, scores, others, mustOthers, othersKey, placeholderDesc, isRequired, showIndex, showType, showSpliter, layout, quotaDisplay } = excelQuestion
 
     // 检查题型是否支持
     if (!textTypeMap[type]) {
@@ -207,14 +231,23 @@ const excelToSchema = (excelQuestions: Array<{title: string, type: string, optio
     }
 
     const question: Record<string, any> = getQuestionByType(textTypeMap[type]);
-    question.title = title
-    question.showIndex = true
+    // 解码题目标题中的HTML实体
+    question.title = decodeHtmlEntities(title);
+    
+    // 处理显示配置字段
+    question.isRequired = isRequired === '是' || isRequired === 'true' || isRequired === '1';
+    question.showIndex = showIndex === '是' || showIndex === 'true' || showIndex === '1';
+    question.showType = showType === '是' || showType === 'true' || showType === '1';
+    question.showSpliter = showSpliter === '是' || showSpliter === 'true' || showSpliter === '1';
+    question.layout = layout || 'vertical';
+    question.quotaDisplay = quotaDisplay === '是' || quotaDisplay === 'true' || quotaDisplay === '1';
 
     switch (type) {
       case "单行输入框":
       case "多行输入框":
       case "评分":
       case "多级联动":
+      case "描述文本":
         questions.push(question);
         break;
 
@@ -223,8 +256,40 @@ const excelToSchema = (excelQuestions: Array<{title: string, type: string, optio
       case "投票":
       case "判断题": {
         if (options && options.trim()) {
-          const questionOptions = getMultiOptionByText(options.trim())
-          question.options = questionOptions;
+          // 处理分号分割的选项格式
+          // 先解码HTML实体
+          const decodedOptions = decodeHtmlEntities(options);
+          
+          // 更智能的分割：只在分号前后都有内容时才分割
+          const optionTexts = decodedOptions
+            .split(';')
+            .map(text => text.trim())
+            .filter(text => text.length > 0);
+          
+          const optionScores = scores ? scores.split(';').map(score => score.trim()) : [];
+          const othersOptions = others ? others.split(';').map(text => text.trim()).filter(Boolean) : [];
+          const mustOthersOptions = mustOthers ? mustOthers.split(';').map(text => text.trim()) : [];
+          const othersKeyOptions = othersKey ? othersKey.split(';').map(text => text.trim()) : [];
+          const placeholderDescOptions = placeholderDesc ? placeholderDesc.split(';').map(text => text.trim()) : [];
+          
+          question.options = optionTexts.map((text, index) => {
+            // 检查是否是"其他"选项
+            const isOthersOption = othersOptions.includes(text) || 
+                                 othersOptions[index] === '是' || 
+                                 othersOptions[index] === 'true' ||
+                                 text.includes('其他') || 
+                                 text.includes('填写');
+            
+            return {
+              text: decodeHtmlEntities(text),
+              others: isOthersOption,
+              mustOthers: isOthersOption && (mustOthersOptions[index] === '是' || mustOthersOptions[index] === 'true'),
+              othersKey: isOthersOption ? (othersKeyOptions[index] || `data${Date.now()}_${index}`) : '',
+              placeholderDesc: isOthersOption ? (placeholderDescOptions[index] || '') : '',
+              hash: `${Date.now()}${index}`,
+              score: optionScores[index] && optionScores[index] !== '' ? parseInt(optionScores[index]) : undefined,
+            };
+          });
         }else {
           question.options = [];
         }
@@ -298,9 +363,15 @@ const submitUpload = async () => {
     if (response.data.code === 200) {
       // 将Excel数据转换为问卷格式的题目列表
       const excelQuestions = response.data.data.questions;
+      const pageConf = response.data.data.pageConf || [];
+      const descriptionConfig = response.data.data.descriptionConfig || {};
       const questionList = excelToSchema(excelQuestions);
 
-      emit('on-excel-upload-success', questionList);
+      console.log('ExcelImport - 解析的分页配置:', pageConf);
+      console.log('ExcelImport - 解析的描述配置:', descriptionConfig);
+      console.log('ExcelImport - 解析的题目列表:', questionList);
+
+      emit('on-excel-upload-success', questionList, pageConf, descriptionConfig);
 
       resetUpload();
       uploadSuccess.value = true;

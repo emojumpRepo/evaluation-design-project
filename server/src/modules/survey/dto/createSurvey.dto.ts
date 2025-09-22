@@ -32,6 +32,12 @@ export class CreateSurveyDto {
   @ApiProperty({ description: '题目列表', required: false })
   questionList?: Array<any>;
 
+  @ApiProperty({ description: '分页配置', required: false })
+  pageConf?: number[];
+
+  @ApiProperty({ description: '描述配置', required: false })
+  descriptionConfig?: any;
+
   static validate(data) {
     return Joi.object({
       title: Joi.string().required(),
@@ -55,6 +61,8 @@ export class CreateSurveyDto {
       groupId: Joi.string().allow(null, ''),
       isCollaborated: Joi.boolean().allow(null, false).default(false),
       questionList: Joi.allow(null),
+      pageConf: Joi.array().items(Joi.number()).allow(null),
+      descriptionConfig: Joi.allow(null),
     }).validate(data);
   }
 }

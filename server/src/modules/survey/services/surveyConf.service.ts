@@ -27,11 +27,18 @@ export class SurveyConfService {
     createMethod: string;
     createFrom: string;
     questionList?: Array<any>;
+    code?: any;
+    pageConf?: number[];
+    descriptionConfig?: any;
   }) {
-    const { surveyId, surveyType, createMethod, createFrom, questionList } =
+    const { surveyId, surveyType, createMethod, createFrom, questionList, code, pageConf, descriptionConfig } =
       params;
     let schemaData = null;
-    if (createMethod === 'copy') {
+    
+    // 如果直接提供了code，优先使用
+    if (code) {
+      schemaData = code;
+    } else if (createMethod === 'copy') {
       const codeInfo = await this.getSurveyConfBySurveyId(createFrom);
       schemaData = codeInfo.code;
     } else {
@@ -39,6 +46,17 @@ export class SurveyConfService {
         schemaData = await getSchemaBySurveyType(surveyType);
         if (questionList && questionList.length > 0) {
           schemaData.dataConf.dataList = questionList;
+        }
+        if (pageConf && pageConf.length > 0) {
+          console.log('设置分页配置到schemaData:', pageConf);
+          schemaData.pageConf = pageConf;
+        }
+        if (descriptionConfig && Object.keys(descriptionConfig).length > 0) {
+          console.log('设置描述配置到schemaData:', descriptionConfig);
+          if (!schemaData.bannerConf) {
+            schemaData.bannerConf = {};
+          }
+          schemaData.bannerConf.descriptionConfig = descriptionConfig;
         }
       } catch (error) {
         throw new HttpException(

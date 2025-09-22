@@ -4,7 +4,16 @@
     <div class="wrapper" ref="boxRef">
       <HeaderContent v-if="pageIndex == 1" :bannerConf="bannerConf" :readonly="true" />
       <div class="content">
-        <MainTitle v-if="pageIndex == 1" :bannerConf="bannerConf" :readonly="true"></MainTitle>
+        <MainTitle 
+          v-if="pageIndex == 1 && hasValidContent(bannerConf.titleConfig?.mainTitle)" 
+          :bannerConf="bannerConf" 
+          :readonly="true"
+        />
+        <DescriptionModule 
+          v-if="hasValidContent(bannerConf.descriptionConfig?.[`page${pageIndex}`]?.content)" 
+          :bannerConf="{ ...bannerConf, currentPage: pageIndex }" 
+          :readonly="true"
+        />
         <MainRenderer ref="mainRef"></MainRenderer>
         <SubmitButton
           :validate="validate"
@@ -60,6 +69,7 @@ let parentOrigin = '*';
 
 const HeaderContent = communalLoader.loadComponent('HeaderContent')
 const MainTitle = communalLoader.loadComponent('MainTitle')
+const DescriptionModule = communalLoader.loadComponent('DescriptionModule')
 const SubmitButton = communalLoader.loadComponent('SubmitButton')
 const LogoIcon = communalLoader.loadComponent('LogoIcon')
 
@@ -78,6 +88,19 @@ const isFinallyPage = computed(() => questionStore.isFinallyPage)
 const pageIndex = computed(() => questionStore.pageIndex)
 const { bannerConf, submitConf, bottomConf: logoConf, whiteData } = storeToRefs(surveyStore)
 const surveyPath = computed(() => surveyStore.surveyPath || '')
+
+// 检查HTML内容是否包含有效文本（不只是HTML标签）
+const hasValidContent = (htmlContent: string | undefined): boolean => {
+  if (!htmlContent || typeof htmlContent !== 'string') {
+    return false
+  }
+  
+  // 移除HTML标签，只保留文本内容
+  const textContent = htmlContent.replace(/<[^>]*>/g, '').trim()
+  
+  // 检查是否还有实际文本内容
+  return textContent.length > 0
+}
 
 // 分页变化时，滚动到页面头部并定位当前页第一个问题
 watch(pageIndex, async () => {

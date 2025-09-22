@@ -13,6 +13,13 @@
           @select="setCurrentEditOne('mainTitle')"
           @change="handleChange"
         />
+        <DescriptionModule
+          :bannerConf="{ ...bannerConf, currentPage: pageEditOne }"
+          :readonly="false"
+          :is-selected="currentEditOne === 'description'"
+          @select="setCurrentEditOne('description')"
+          @change="handleChange"
+        />
         <MaterialGroup
           :current-edit-one="parseInt(currentEditOne)"
           :questionDataList="pageQuestionData"
@@ -52,6 +59,7 @@ import { useEditStore } from '@/management/stores/edit'
 
 const MainTitle = communalLoader.loadComponent('MainTitle')
 const SubmitButton = communalLoader.loadComponent('SubmitButton')
+const DescriptionModule = communalLoader.loadComponent('DescriptionModule')
 
 const editStore = useEditStore()
 const { currentEditOne, currentEditKey, pageQuestionData, isFinallyPage, pageEditOne } =
@@ -78,6 +86,8 @@ const handleChange = (data) => {
   const resultKey = `${currentEditKey.value}.${key}`
   changeSchema({ key: resultKey, value })
 }
+
+
 
 const onMainClick = (e) => {
   if (e.target === mainOperation.value) {
