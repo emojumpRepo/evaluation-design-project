@@ -84,3 +84,29 @@ export const getSessionId = ({ surveyId }) => {
 export const seizeSession = ({ sessionId }) => {
   return axios.post('/session/seize', { sessionId })
 }
+
+// 导出问卷
+export const exportSurvey = (surveyId) => {
+  return axios.get('/survey/exportSurvey', {
+    params: { surveyId },
+    responseType: 'blob'
+  })
+}
+
+// 导入问卷
+export const importSurveyFromExcel = (formData) => {
+  return axios.post('/survey/importSurveyFromExcel', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  })
+}
+
+// 从Excel创建问卷
+export const createSurveyFromExcel = (formData) => {
+  return axios.post('/survey/createSurveyFromExcel', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  })
+}

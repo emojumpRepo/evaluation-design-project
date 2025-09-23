@@ -1,4 +1,6 @@
 .submit-warp {
+  display: flex;
+  gap: 12px;
   &.question-submit_wrapper {
     margin: 0 0.4rem;
     font-size: 0;
@@ -24,4 +26,10 @@
     cursor: pointer;
     border: none;
   }
+}
+
+.prev-btn {
+  background: #fff;
+  color: var(--theme-color, #409eff);
+  border: 1px solid var(--theme-color, #409eff);
 }

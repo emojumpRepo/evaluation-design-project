@@ -61,7 +61,7 @@ export const menuItems = {
     snapshot: '/imgs/question-type-snapshot/cascader.webp',
     icon: 'cascader-select',
     title: '多级联动'
-  }
+  },
 }
 
 const menuGroup = [

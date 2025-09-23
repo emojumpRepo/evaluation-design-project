@@ -1,7 +1,8 @@
 <template>
   <div class="new">
     <TypeList :selectType="selectType" @selectTypeChange="onSelectTypeChange" />
-    <CreateForm :selectType="selectType" />
+    <CreateForm v-if="selectType !== 'import'" :selectType="selectType" />
+    <ImportForm v-else />
   </div>
 </template>
 
@@ -9,6 +10,7 @@
 import { ref } from 'vue'
 import TypeList from './components/TypeList.vue'
 import CreateForm from './components/CreateForm.vue'
+import ImportForm from './components/ImportForm.vue'
 
 const selectType = ref<string>('normal')
 

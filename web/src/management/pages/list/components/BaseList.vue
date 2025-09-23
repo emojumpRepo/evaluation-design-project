@@ -130,6 +130,7 @@ import { QOP_MAP } from '@/management/utils/constant.ts'
 import { deleteSurvey, pausingSurvey } from '@/management/api/survey'
 import { useWorkSpaceStore } from '@/management/stores/workSpace'
 import { useSurveyListStore } from '@/management/stores/surveyList'
+import { useUserStore } from '@/management/stores/user'
 import ModifyDialog from './ModifyDialog.vue'
 import TagModule from './TagModule.vue'
 import StateModule from './StateModule.vue'
@@ -239,6 +240,11 @@ const getToolConfig = (row) => {
       label: '修改'
     },
     {
+      key: 'export',
+      label: '导出',
+      icon: 'icon-daochu'
+    },
+    {
       key: 'delete',
       label: '删除',
       icon: 'icon-shanchu'
@@ -335,6 +341,9 @@ const handleClick = (key, data) => {
     case QOP_MAP.EDIT:
       onModify(data, QOP_MAP.EDIT)
       return
+    case 'export':
+      onExport(data)
+      return
     case QOP_MAP.COPY:
       onModify(data, QOP_MAP.COPY)
       return
@@ -365,6 +374,56 @@ const handleClick = (key, data) => {
       return
     default:
       return
+  }
+}
+const onExport = async (row) => {
+  try {
+    // 获取用户token
+    const userStore = useUserStore()
+    const token = userStore.userInfo?.token
+    
+    if (!token) {
+      ElMessage.error('请先登录')
+      return
+    }
+    
+    // 使用fetch API获取文件流
+    const response = await fetch(`/api/survey/exportSurvey?surveyId=${row._id}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    })
+    
+    if (!response.ok) {
+      throw new Error('导出失败')
+    }
+    
+    // 获取文件名
+    const contentDisposition = response.headers.get('Content-Disposition')
+    let filename = `${row.title}-问卷导出-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.xlsx`
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename="(.+)"/)
+      if (filenameMatch) {
+        filename = decodeURIComponent(filenameMatch[1])
+      }
+    }
+    
+    // 创建blob并下载
+    const blob = await response.blob()
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    link.style.display = 'none'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+    
+    ElMessage.success('导出成功')
+  } catch (error) {
+    ElMessage.error('导出失败')
   }
 }
 const onDelete = async (row) => {

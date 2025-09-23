@@ -27,11 +27,18 @@ export class SurveyConfService {
     createMethod: string;
     createFrom: string;
     questionList?: Array<any>;
+    code?: any;
+    pageConf?: number[];
+    descriptionConfig?: any;
   }) {
-    const { surveyId, surveyType, createMethod, createFrom, questionList } =
+    const { surveyId, surveyType, createMethod, createFrom, questionList, code, pageConf, descriptionConfig } =
       params;
     let schemaData = null;
-    if (createMethod === 'copy') {
+    
+    // 如果直接提供了code，优先使用
+    if (code) {
+      schemaData = code;
+    } else if (createMethod === 'copy') {
       const codeInfo = await this.getSurveyConfBySurveyId(createFrom);
       schemaData = codeInfo.code;
     } else {
@@ -39,6 +46,17 @@ export class SurveyConfService {
         schemaData = await getSchemaBySurveyType(surveyType);
         if (questionList && questionList.length > 0) {
           schemaData.dataConf.dataList = questionList;
+        }
+        if (pageConf && pageConf.length > 0) {
+          console.log('设置分页配置到schemaData:', pageConf);
+          schemaData.pageConf = pageConf;
+        }
+        if (descriptionConfig && Object.keys(descriptionConfig).length > 0) {
+          console.log('设置描述配置到schemaData:', descriptionConfig);
+          if (!schemaData.bannerConf) {
+            schemaData.bannerConf = {};
+          }
+          schemaData.bannerConf.descriptionConfig = descriptionConfig;
         }
       } catch (error) {
         throw new HttpException(
@@ -74,7 +92,9 @@ export class SurveyConfService {
     if (!codeInfo) {
       throw new SurveyNotFoundException('问卷配置不存在');
     }
-    codeInfo.code = params.schema;
+    // 持久化前做字段去重和修正
+    const fixedSchema = this.ensureUniqueFieldsAndHashes(params.schema);
+    codeInfo.code = fixedSchema;
     await this.surveyConfRepository.save(codeInfo);
   }
 
@@ -111,6 +131,57 @@ export class SurveyConfService {
     conf.code.baseConf.endTime = params.endTime;
     await this.surveyConfRepository.save(conf);
     return conf.code;
+  }
+
+  /**
+   * 确保 dataList 中每道题的 field 唯一，且选项 hash 非空且唯一。
+   * 如发现重复/空值，将自动修正为新的随机值（仅在本次 schema 内保证唯一）。
+   */
+  private ensureUniqueFieldsAndHashes(schema: SurveySchemaInterface): SurveySchemaInterface {
+    if (!schema?.dataConf?.dataList || !Array.isArray(schema.dataConf.dataList)) {
+      return schema;
+    }
+    const usedFields = new Set<string>();
+    const genField = () => {
+      let f = '';
+      do {
+        f = `q${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+      } while (usedFields.has(f));
+      return f;
+    };
+    const fixOptionHashes = (options?: Array<Option>) => {
+      if (!Array.isArray(options)) return;
+      const used = new Set<string>();
+      const genHash = () => {
+        let h = '';
+        do {
+          h = Math.random().toString(36).slice(2, 8);
+        } while (used.has(h));
+        return h;
+      };
+      for (const op of options) {
+        if (!op) continue;
+        let h = (op as any).hash as unknown as string;
+        if (typeof h !== 'string' || h.trim() === '' || used.has(h)) {
+          h = genHash();
+          (op as any).hash = h as any;
+        }
+        used.add(h);
+      }
+    };
+    for (const item of schema.dataConf.dataList as Array<DataItem & { extraOptions?: Option[] }>) {
+      if (!item) continue;
+      let { field } = item as any;
+      if (typeof field !== 'string' || field.trim() === '' || usedFields.has(field)) {
+        field = genField();
+        (item as any).field = field;
+      }
+      usedFields.add(field);
+      // 修正选项 hash
+      fixOptionHashes((item as any).options);
+      fixOptionHashes((item as any).extraOptions);
+    }
+    return schema;
   }
 
   /**

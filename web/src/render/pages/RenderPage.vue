@@ -4,7 +4,16 @@
     <div class="wrapper" ref="boxRef">
       <HeaderContent v-if="pageIndex == 1" :bannerConf="bannerConf" :readonly="true" />
       <div class="content">
-        <MainTitle v-if="pageIndex == 1" :bannerConf="bannerConf" :readonly="true"></MainTitle>
+        <MainTitle 
+          v-if="pageIndex == 1 && showMainTitle" 
+          :bannerConf="bannerConf" 
+          :readonly="true"
+        />
+        <DescriptionModule 
+          v-if="showDescription" 
+          :bannerConf="{ ...bannerConf, currentPage: pageIndex }" 
+          :readonly="true"
+        />
         <MainRenderer ref="mainRef"></MainRenderer>
         <SubmitButton
           :validate="validate"
@@ -12,7 +21,9 @@
           :readonly="true"
           :isFinallyPage="isFinallyPage"
           :renderData="renderData"
+          :canGoPrev="canGoPrev"
           @submit="handleSubmit"
+          @prev="handlePrev"
         ></SubmitButton>
       </div>
       <LogoIcon :logo-conf="logoConf" :readonly="true" />
@@ -52,7 +63,6 @@ interface Props {
 }
 
 withDefaults(defineProps<Props>(), {
-  questionInfo: {},
   isMobile: false
 })
 
@@ -60,6 +70,7 @@ let parentOrigin = '*';
 
 const HeaderContent = communalLoader.loadComponent('HeaderContent')
 const MainTitle = communalLoader.loadComponent('MainTitle')
+const DescriptionModule = communalLoader.loadComponent('DescriptionModule')
 const SubmitButton = communalLoader.loadComponent('SubmitButton')
 const LogoIcon = communalLoader.loadComponent('LogoIcon')
 
@@ -79,31 +90,47 @@ const pageIndex = computed(() => questionStore.pageIndex)
 const { bannerConf, submitConf, bottomConf: logoConf, whiteData } = storeToRefs(surveyStore)
 const surveyPath = computed(() => surveyStore.surveyPath || '')
 
+const canGoPrev = computed(() => pageIndex.value > 1)
+
+// 检查HTML内容是否包含有效文本（不只是HTML标签）
+const hasValidContent = (htmlContent: string | undefined): boolean => {
+  if (!htmlContent || typeof htmlContent !== 'string') {
+    return false
+  }
+  const textContent = htmlContent.replace(/<[^>]*>/g, '').trim()
+  return textContent.length > 0
+}
+
+// 计算主标题与描述显示（避免模板中的类型报错）
+const showMainTitle = computed(() => hasValidContent((bannerConf.value as any)?.titleConfig?.mainTitle))
+const showDescription = computed(() => hasValidContent((bannerConf.value as any)?.descriptionConfig?.[`page${pageIndex.value}`]?.content))
+
 // 分页变化时，滚动到页面头部并定位当前页第一个问题
 watch(pageIndex, async () => {
   await nextTick()
   const contentEl = boxRef.value?.querySelector('.content') as HTMLElement | null
   if (contentEl) {
-    // 滚动容器到顶部
     if (typeof contentEl.scrollTo === 'function') {
       contentEl.scrollTo({ top: 0, behavior: 'smooth' })
     } else {
       contentEl.scrollTop = 0
     }
-    // 尝试定位到当前页第一个问题
     const firstQuestion = contentEl.querySelector('.gap') as HTMLElement | null
     if (firstQuestion && typeof firstQuestion.scrollIntoView === 'function') {
       firstQuestion.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }
   } else {
-    // 兜底：滚动窗口到顶部
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 })
 
 const validate = (callback: (v: boolean) => void) => {
   const index = 0
-  mainRef.value.$refs.formGroup[index].validate(callback)
+  ;(mainRef.value as any).$refs.formGroup[index].validate(callback)
+}
+
+const handlePrev = () => {
+  questionStore.subPageIndex()
 }
 
 const normalizationRequestBody = () => {
@@ -126,7 +153,6 @@ const normalizationRequestBody = () => {
     ...whiteData.value
   }
 
-  // 自动回填开启时，记录数据
   if (baseConf.fillSubmitAnswer) {
     clearSurveyData(surveyPath.value, userId)
     clearSurveySubmit(surveyPath.value, userId)
@@ -135,7 +161,6 @@ const normalizationRequestBody = () => {
     setSurveySubmit(surveyPath.value, 1, userId)
   }
 
-  // 数据加密
   if (encryptInfo?.encryptType) {
     result.encryptType = encryptInfo.encryptType
 
@@ -169,7 +194,6 @@ const normalizationRequestBody = () => {
   return result
 }
 
-// 问卷完成时调用，用于iframe通信
 function notifyComplete(payload: any) {
   console.log('send notifyComplete', payload)
   window.parent.postMessage({ type: 'complete', payload }, parentOrigin);

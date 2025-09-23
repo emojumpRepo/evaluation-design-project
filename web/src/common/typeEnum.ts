@@ -9,6 +9,7 @@ export enum QUESTION_TYPE {
   RADIO_NPS = 'radio-nps',
   VOTE = 'vote',
   CASCADER = 'cascader',
+  DESCRIPTION = 'description',
 }
 
 // 题目类型标签映射对象
@@ -22,10 +23,11 @@ export const typeTagLabels: Record<QUESTION_TYPE, string> = {
   [QUESTION_TYPE.RADIO_NPS]: 'NPS评分',
   [QUESTION_TYPE.VOTE]: '投票',
   [QUESTION_TYPE.CASCADER]: '多级联动',
+  [QUESTION_TYPE.DESCRIPTION]: '描述文本',
 }
 
 // 输入类题型
-export const INPUT = [QUESTION_TYPE.TEXT, QUESTION_TYPE.TEXTAREA]
+export const INPUT = [QUESTION_TYPE.TEXT, QUESTION_TYPE.TEXTAREA, QUESTION_TYPE.DESCRIPTION]
 
 // 选择类题型分类
 export const NORMAL_CHOICES = [QUESTION_TYPE.RADIO, QUESTION_TYPE.CHECKBOX]

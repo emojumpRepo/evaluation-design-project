@@ -22,5 +22,11 @@ export const SURVEY_TYPE_LIST = [
     title: '在线报名',
     img: '/imgs/create/register-icon.webp',
     desc: '活动报名 / 会议报名'
+  },
+  {
+    type: 'import',
+    title: '导入问卷',
+    img: '/imgs/create/normal-icon.webp',
+    desc: '从Excel文件导入已有问卷 / 系统迁移'
   }
 ]

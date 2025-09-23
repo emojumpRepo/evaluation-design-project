@@ -13,9 +13,10 @@ export default defineComponent({
     isFinallyPage: Boolean,
     readonly: Boolean,
     validate: Function,
-    renderData: Array
+    renderData: Array,
+    canGoPrev: Boolean,
   },
-  emits: ['submit', 'select'],
+  emits: ['submit', 'select', 'prev'],
   setup(props, { emit }) {
     const submit = (e) => {
       if (!props.readonly) return
@@ -30,6 +31,12 @@ export default defineComponent({
       }
     }
 
+    const goPrev = (e) => {
+      if (!props.readonly) return
+      if (e) e.preventDefault()
+      emit('prev')
+    }
+
     const handleClick = () => {
       if (props.readonly) return
       emit('select')
@@ -38,13 +45,19 @@ export default defineComponent({
     return {
       props,
       submit,
-      handleClick
+      handleClick,
+      goPrev,
     }
   },
   render() {
-    const { submitConf, isFinallyPage } = this.props
+    const { submitConf, isFinallyPage, canGoPrev } = this.props
     return (
       <div class={['submit-warp', 'preview-submit_wrapper']} onClick={this.handleClick}>
+        {canGoPrev ? (
+          <button class="submit-btn prev-btn" type="button" onClick={this.goPrev}>
+            上一页
+          </button>
+        ) : null}
         <button class="submit-btn" type="primary" onClick={this.submit}>
           {isFinallyPage ? submitConf.submitTitle : '下一页'}
         </button>

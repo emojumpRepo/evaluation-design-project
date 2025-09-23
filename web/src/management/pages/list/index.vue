@@ -242,6 +242,8 @@ const showTextImport = ref(false)
 const showExcelImport = ref(false)
 const showCreateForm = ref(false)
 const questionList = ref<Array<any>>([])
+const pageConf = ref<number[]>([])
+const descriptionConfig = ref<any>({})
 const createMethod = ref('')
 const isRecycleBin = computed(() => menuType.value === MenuType.RecycleBin);
 
@@ -433,6 +435,8 @@ const onConfirmCreate = async (formValue: { title: string; remark?: string; surv
           ...formValue,
           createMethod: createMethod.value,
           questionList: questionList.value,
+          pageConf: pageConf.value,
+          descriptionConfig: descriptionConfig.value,
         }
         if (workSpaceId.value) {
           payload.workspaceId = workSpaceId.value
@@ -506,8 +510,12 @@ const onCloseExcelImport = () => {
   showExcelImport.value = false
 }
 
-const onExcelUploadSuccess = (newQuestionList: Array<any>) => {
+const onExcelUploadSuccess = (newQuestionList: Array<any>, newPageConf?: number[], newDescriptionConfig?: any) => {
   questionList.value = newQuestionList
+  pageConf.value = newPageConf || []
+  descriptionConfig.value = newDescriptionConfig || {}
+  console.log('list/index.vue - 接收到的分页配置:', pageConf.value)
+  console.log('list/index.vue - 接收到的描述配置:', descriptionConfig.value)
 }
 
 const onShowCreateFormExcelImport = () => {

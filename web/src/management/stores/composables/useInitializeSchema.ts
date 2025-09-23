@@ -10,7 +10,11 @@ export default function useInitializeSchema(
 ) {
   const schema = reactive({
     metaData: null,
-    bannerConf: {} as any,
+    bannerConf: {
+      descriptionConfig: {
+        content: '请输入描述内容'
+      }
+    } as any,
     bottomConf: {} as any,
     skinConf: {} as any,
     baseConf: {} as any,
@@ -27,6 +31,12 @@ export default function useInitializeSchema(
   function initSchema({ metaData, codeData }: { metaData: any; codeData: any }) {
     schema.metaData = metaData
     schema.bannerConf = merge({}, schema.bannerConf, codeData.bannerConf)
+    // 确保descriptionConfig存在
+    if (!schema.bannerConf.descriptionConfig) {
+      schema.bannerConf.descriptionConfig = {
+        content: '请输入描述内容'
+      }
+    }
     schema.bottomConf = merge({}, schema.bottomConf, codeData.bottomConf)
     schema.skinConf = merge({}, schema.skinConf, codeData.skinConf)
     schema.baseConf = merge({}, schema.baseConf, codeData.baseConf)
