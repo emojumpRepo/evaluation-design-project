@@ -1,52 +1,41 @@
-# 构建阶段
-FROM node:18-alpine AS builder
+# 镜像集成
+FROM node:18-slim AS builder
 
-WORKDIR /app
+WORKDIR /builder
 
-# 复制package文件
-COPY web/package*.json ./web/
-COPY server/package*.json ./server/
+# 复制文件到工作区间
+COPY web/ /builder/web/
+COPY server/ /builder/server/
 
-# 安装依赖
-RUN cd web && npm install && \
-    cd ../server && npm install
+RUN sed -i 's/deb.debian.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apt/sources.list.d/debian.sources && \
+    npm config set registry https://registry.npmmirror.com && \
+    apt-get update && apt-get install -y build-essential && \
+    cd /builder/web && npm install && npm run build-only && \
+    cd /builder/server && npm install && npm run build
 
-# 复制源代码
-COPY web ./web
-COPY server ./server
 
-# 构建
-RUN cd web && npm run build && \
-    cd ../server && npm run build
+FROM node:18-slim
 
-# 运行阶段
-FROM node:18-alpine
+# 设置工作区间
+WORKDIR /xiaoju-survey
 
 # 安装nginx
-RUN apk add --no-cache nginx
+RUN sed -i 's/deb.debian.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apt/sources.list.d/debian.sources && \
+    npm config set registry https://registry.npmmirror.com && \
+    apt-get update && apt-get install -y nginx
 
-WORKDIR /app
-
-# 复制构建产物
-COPY --from=builder /app/web/dist ./web/dist
-COPY --from=builder /app/server/dist ./server/dist
-COPY --from=builder /app/server/node_modules ./server/node_modules
-COPY --from=builder /app/server/package*.json ./server/
-
-# 复制nginx配置
+# 仅复制运行需要的文件到工作区间
+COPY --from=builder /builder/web/dist/ /xiaoju-survey/web/dist/
+COPY --from=builder /builder/server/dist/ /xiaoju-survey/server/dist/
+COPY --from=builder /builder/server/node_modules/ /xiaoju-survey/server/node_modules/
+COPY --from=builder /builder/server/public/ /xiaoju-survey/server/public/
+COPY --from=builder /builder/server/package*.json /builder/server/.env* /xiaoju-survey/server/
+COPY docker-run.sh /xiaoju-survey/docker-run.sh
+# 覆盖nginx配置文件
 COPY nginx/nginx.conf /etc/nginx/nginx.conf
 
-# 确保文件权限正确
-RUN chmod -R 755 /app/web/dist
-
-# 创建启动脚本
-RUN echo '#!/bin/sh' > /app/start.sh && \
-    echo 'echo "Starting nginx..."' >> /app/start.sh && \
-    echo 'nginx' >> /app/start.sh && \
-    echo 'echo "Starting Node.js server..."' >> /app/start.sh && \
-    echo 'cd /app/server && node dist/main.js' >> /app/start.sh && \
-    chmod +x /app/start.sh
-
+# 暴露端口 需要跟nginx的port一致
 EXPOSE 8080
 
-CMD ["/app/start.sh"]
+# docker入口文件,启动nginx和运行pm2启动,并保证监听不断
+CMD ["sh","docker-run.sh"]

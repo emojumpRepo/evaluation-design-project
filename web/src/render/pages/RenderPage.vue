@@ -292,30 +292,16 @@ const submitSurvey = async () => {
         surveyPath: surveyPath.value,
       })
       
-      // 检查回调地址优先级：
-      // 1. 优先使用问卷配置的回调开关中的地址
-      // 2. 如果没有配置，使用全局的redirectUrl
-      const callbackConfig = (surveyStore.submitConf as any)?.callbackConfig
-      let finalRedirectUrl = ''
-      
-      if (callbackConfig?.enabled && callbackConfig?.url) {
-        // 使用问卷独立配置的回调地址
-        console.log('使用问卷配置的回调地址:', callbackConfig.url)
-        finalRedirectUrl = callbackConfig.url
-      } else if (surveyStore.redirectUrl) {
-        // 使用全局回调地址
-        console.log('使用全局回调地址:', surveyStore.redirectUrl)
-        finalRedirectUrl = surveyStore.redirectUrl
-      }
-      
-      if (finalRedirectUrl) {
-        console.log('重定向到:', finalRedirectUrl)
+      // 检查是否有重定向URL（用于页面跳转）
+      // 注意：回调地址（callbackConfig）是后端用于数据推送的，不是页面跳转
+      if (surveyStore.redirectUrl) {
+        console.log('重定向到:', surveyStore.redirectUrl)
         // 延迟一秒让用户看到成功提示，然后重定向
         setTimeout(() => {
-          window.location.href = finalRedirectUrl
+          window.location.href = surveyStore.redirectUrl
         }, 1000)
       } else {
-        // 没有配置任何回调地址时，跳转到成功页面
+        // 没有重定向URL时，跳转到成功页面
         router.replace({ name: 'successPage' })
       }
     } else {

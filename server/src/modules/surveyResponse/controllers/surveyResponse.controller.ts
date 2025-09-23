@@ -12,6 +12,7 @@ import { ResponseSchemaService } from '../services/responseScheme.service';
 import { SurveyResponseService } from '../services/surveyResponse.service';
 import { ClientEncryptService } from '../services/clientEncrypt.service';
 import { MessagePushingTaskService } from '../../message/services/messagePushingTask.service';
+import { CallbackQueueService } from '../services/callbackQueue.service';
 
 import moment from 'moment';
 import * as Joi from 'joi';
@@ -48,6 +49,7 @@ export class SurveyResponseController {
     private readonly userService: UserService,
     private readonly workspaceMemberService: WorkspaceMemberService,
     private readonly calculateService: CalculateService,
+    private readonly callbackQueueService: CallbackQueueService,
   ) {}
 
   @Post('/createResponse')
@@ -669,17 +671,24 @@ export class SurveyResponseController {
     if (callbackConfig?.enabled && callbackConfig?.url) {
       // 使用问卷独立配置的回调
       this.logger.info(`使用问卷独立回调配置: ${callbackConfig.url}`);
-      this.executeCallback({
+      
+      // 使用队列处理回调，支持延迟重试
+      await this.callbackQueueService.addCallbackJob({
         callbackConfig,
-        responseSchema,
-        formValues,
-        originalUserId,
-        originalAssessmentId,
-        originalQuestionId,
-        surveyResponse,
+        callbackData: await this.buildCallbackData({
+          responseSchema,
+          formValues,
+          originalUserId,
+          originalAssessmentId,
+          originalQuestionId,
+          surveyResponse,
+          surveyPath,
+          calculationResult,
+        }),
         surveyPath,
-        calculationResult, // 传递计算结果
       });
+      
+      this.logger.info(`回调任务已加入队列: surveyPath=${surveyPath}`);
     } else if (canPush) {
       // 没有独立配置时，使用全局回调配置
       this.logger.info(`使用全局回调配置`);
@@ -721,10 +730,9 @@ export class SurveyResponseController {
     };
   }
 
-  // 执行回调函数
-  async executeCallback(params) {
+  // 构建回调数据
+  async buildCallbackData(params) {
     const {
-      callbackConfig,
       responseSchema,
       formValues,
       originalUserId,
@@ -735,147 +743,92 @@ export class SurveyResponseController {
       calculationResult,
     } = params;
 
-    try {
-      // 格式化题目和答案数据
-      const dataList = responseSchema.code.dataConf.dataList;
-      const questions = dataList.map((questionItem) => {
-        const userValue = formValues[questionItem.field];
-        const questionData = {
-          questionId: questionItem.field,
-          questionText: this.stripHtmlTags(questionItem.title),
-          questionType: this.mapQuestionType(questionItem.type),
-          options: [],
-          userAnswer: null,
-          answerScore: 0,
-        };
+    // 格式化题目和答案数据
+    const dataList = responseSchema.code.dataConf.dataList;
+    const questions = dataList.map((questionItem) => {
+      const userValue = formValues[questionItem.field];
+      const questionData = {
+        questionId: questionItem.field,
+        questionText: this.stripHtmlTags(questionItem.title),
+        questionType: this.mapQuestionType(questionItem.type),
+        options: [],
+        userAnswer: null,
+        answerScore: 0,
+      };
 
-        // 处理选项类题目
-        if (questionItem.options && questionItem.options.length > 0) {
-          questionData.options = questionItem.options.map((opt, optIdx) => ({
-            optionId: String.fromCharCode(65 + optIdx), // A, B, C, D...
-            optionText: this.stripHtmlTags(opt.text),
-            score: opt.score || 0,
-          }));
+      // 处理选项类题目
+      if (questionItem.options && questionItem.options.length > 0) {
+        questionData.options = questionItem.options.map((opt, optIdx) => ({
+          optionId: String.fromCharCode(65 + optIdx), // A, B, C, D...
+          optionText: this.stripHtmlTags(opt.text),
+          score: opt.score || 0,
+        }));
 
-          // 获取用户答案
-          if (userValue) {
-            if (Array.isArray(userValue)) {
-              // 多选题
-              questionData.userAnswer = userValue.map((hash) => {
-                const optIdx = questionItem.options.findIndex(
-                  (opt) => opt.hash === hash,
-                );
-                return optIdx >= 0 ? String.fromCharCode(65 + optIdx) : hash;
-              });
-              questionData.answerScore = userValue.reduce((sum, hash) => {
-                const opt = questionItem.options.find((o) => o.hash === hash);
-                return sum + (opt?.score || 0);
-              }, 0);
-            } else {
-              // 单选题
+        // 获取用户答案
+        if (userValue) {
+          if (Array.isArray(userValue)) {
+            // 多选题
+            questionData.userAnswer = userValue.map((hash) => {
               const optIdx = questionItem.options.findIndex(
-                (opt) => opt.hash === userValue,
+                (opt) => opt.hash === hash,
               );
-              questionData.userAnswer =
-                optIdx >= 0 ? String.fromCharCode(65 + optIdx) : userValue;
-              const selectedOpt = questionItem.options.find(
-                (opt) => opt.hash === userValue,
-              );
-              questionData.answerScore = selectedOpt?.score || 0;
-            }
-          }
-        } else {
-          // 非选项题目
-          questionData.userAnswer = userValue || '';
-        }
-
-        return questionData;
-      });
-
-      // 构建回调数据
-      const now = Date.now();
-      const callbackData = {
-        eventId: `evt_${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}${String(new Date().getDate()).padStart(2, '0')}${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`,
-        questionnaireName: responseSchema.title || '问卷调查',
-        questionnaireId: surveyPath || responseSchema.pageId || '',
-        questionnaireType: calculationResult?.scaleType
-          ? this.extractScaleType(calculationResult.scaleType)
-          : 'GENERAL',
-        user: {
-          userId: originalUserId || 'anonymous',
-        },
-        result: {
-          status: 'completed',
-          rawScore: calculationResult?.rawScore || 0,
-          standardScore: calculationResult?.standardScore || 0,
-          level:
-            calculationResult?.depressionLevel ||
-            calculationResult?.level ||
-            '未评级',
-          interpretation: calculationResult?.interpretation || '',
-          recommendations: this.generateRecommendations(calculationResult),
-          dimensions: calculationResult?.dimensions || [],
-          questions: questions,
-        },
-        completedAt: now,
-        createdAt: surveyResponse.createDate?.getTime() || now,
-        updatedAt: now,
-      };
-
-      const headers = {
-        'Content-Type': 'application/json',
-      };
-
-      // 如果启用了自定义headers
-      if (callbackConfig.headersEnabled && callbackConfig.headers) {
-        try {
-          const customHeaders = JSON.parse(callbackConfig.headers);
-          Object.assign(headers, customHeaders);
-        } catch (e) {
-          this.logger.error(`解析自定义headers失败: ${e.message}`);
-        }
-      }
-      const timeout = (parseInt(callbackConfig.timeout) || 10) * 1000;
-      const retryCount = parseInt(callbackConfig.retryCount) || 3;
-
-      let attempt = 0;
-      let lastError;
-
-      while (attempt <= retryCount) {
-        try {
-          const response = await axios({
-            method: callbackConfig.method || 'POST',
-            url: callbackConfig.url,
-            data: callbackConfig.method === 'GET' ? undefined : callbackData,
-            params: callbackConfig.method === 'GET' ? callbackData : undefined,
-            headers,
-            timeout,
-          });
-
-          if (response.status >= 200 && response.status < 300) {
-            this.logger.info(
-              `回调成功: surveyPath=${surveyPath}, attempt=${attempt + 1}`,
+              return optIdx >= 0 ? String.fromCharCode(65 + optIdx) : hash;
+            });
+            questionData.answerScore = userValue.reduce((sum, hash) => {
+              const opt = questionItem.options.find((o) => o.hash === hash);
+              return sum + (opt?.score || 0);
+            }, 0);
+          } else {
+            // 单选题
+            const optIdx = questionItem.options.findIndex(
+              (opt) => opt.hash === userValue,
             );
-            return response.data;
-          }
-        } catch (error) {
-          lastError = error;
-          attempt++;
-          if (attempt <= retryCount) {
-            // 等待一段时间后重试
-            await new Promise((resolve) =>
-              setTimeout(resolve, Math.min(1000 * Math.pow(2, attempt), 10000)),
+            questionData.userAnswer =
+              optIdx >= 0 ? String.fromCharCode(65 + optIdx) : userValue;
+            const selectedOpt = questionItem.options.find(
+              (opt) => opt.hash === userValue,
             );
+            questionData.answerScore = selectedOpt?.score || 0;
           }
         }
+      } else {
+        // 非选项题目
+        questionData.userAnswer = userValue || '';
       }
 
-      this.logger.error(
-        `回调失败（已重试${retryCount}次）: ${lastError?.message}`,
-      );
-    } catch (error) {
-      // 回调失败不影响问卷提交
-      this.logger.error(`执行回调时出错: ${error.message}`);
-    }
+      return questionData;
+    });
+
+    // 构建回调数据
+    const now = Date.now();
+    const callbackData = {
+      eventId: `evt_${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}${String(new Date().getDate()).padStart(2, '0')}${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`,
+      questionnaireName: responseSchema.title || '问卷调查',
+      questionnaireId: surveyPath || responseSchema.pageId || '',
+      questionnaireType: calculationResult?.scaleType
+        ? this.extractScaleType(calculationResult.scaleType)
+        : 'GENERAL',
+      user: {
+        userId: originalUserId || 'anonymous',
+      },
+      result: {
+        status: 'completed',
+        rawScore: calculationResult?.rawScore || 0,
+        standardScore: calculationResult?.standardScore || 0,
+        level:
+          calculationResult?.depressionLevel ||
+          calculationResult?.level ||
+          '未评级',
+        interpretation: calculationResult?.interpretation || '',
+        recommendations: this.generateRecommendations(calculationResult),
+        dimensions: calculationResult?.dimensions || [],
+        questions: questions,
+      },
+      completedAt: now,
+      createdAt: surveyResponse.createDate?.getTime() || now,
+      updatedAt: now,
+    };
+
+    return callbackData;
   }
 }

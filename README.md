@@ -151,11 +151,235 @@ npm run serve
 
 # 快速部署
 
-### 服务部署
+## Docker 部署（推荐）
 
-请查看 [部署指导](https://xiaojusurvey.didi.cn/docs/next/document/%E5%B7%A5%E7%A8%8B%E9%83%A8%E7%BD%B2/Docker%E9%83%A8%E7%BD%B2) 。
+### 前置要求
 
-#### Docker 镜像版本选择
+- Docker 20.10+
+- Docker Compose 1.29+
+- 服务器内存 >= 2GB
+- 开放端口：8080（应用）、6379（Redis，可选）
+
+### 部署步骤
+
+#### 1. 克隆代码到服务器
+
+```bash
+# 克隆项目
+git clone https://github.com/didi/xiaoju-survey.git
+cd xiaoju-survey
+
+# 切换到指定版本（可选）
+git checkout <version-tag>
+```
+
+#### 2. 配置环境变量
+
+编辑 `docker-compose.yaml` 文件，根据实际情况修改环境变量：
+
+```yaml
+environment:
+  # MongoDB配置（必须修改为你的数据库）
+  XIAOJU_SURVEY_MONGO_URL: mongodb://username:password@your-mongo-host:port/?directConnection=true
+  XIAOJU_SURVEY_MONGO_DB_NAME: xiaojuSurvey
+  
+  # 管理员账户（建议修改）
+  ADMIN_USERNAME: admin
+  ADMIN_PASSWORD: your-secure-password
+  
+  # JWT密钥（建议修改为随机字符串）
+  XIAOJU_SURVEY_JWT_SECRET: your-jwt-secret-key
+```
+
+#### 3. 构建并启动服务
+
+```bash
+# 构建镜像并启动服务（首次部署）
+docker-compose up -d --build
+
+# 查看服务状态
+docker-compose ps
+
+# 查看日志
+docker-compose logs -f
+
+# 仅查看应用日志
+docker-compose logs -f app
+```
+
+#### 4. 访问服务
+
+- 管理端：`http://your-server-ip:8080/management`
+- 渲染端：`http://your-server-ip:8080/render/:surveyPath`
+- API文档：`http://your-server-ip:8080/swagger`
+
+默认管理员账号：
+- 用户名：admin（在docker-compose.yaml中配置）
+- 密码：见docker-compose.yaml中的配置
+
+### 服务管理
+
+```bash
+# 停止服务
+docker-compose stop
+
+# 启动服务
+docker-compose start
+
+# 重启服务
+docker-compose restart
+
+# 停止并删除容器
+docker-compose down
+
+# 停止并删除容器及数据卷（谨慎操作）
+docker-compose down -v
+
+# 更新代码后重新部署
+git pull
+docker-compose up -d --build
+```
+
+### 数据备份
+
+#### Redis 数据备份
+
+```bash
+# 备份Redis数据
+docker-compose exec redis redis-cli BGSAVE
+docker cp xiaoju-survey_redis_1:/data/dump.rdb ./backup/redis-$(date +%Y%m%d).rdb
+
+# 恢复Redis数据
+docker cp ./backup/redis-backup.rdb xiaoju-survey_redis_1:/data/dump.rdb
+docker-compose restart redis
+```
+
+#### MongoDB 数据备份（远程数据库）
+
+```bash
+# 备份MongoDB（根据你的实际配置调整）
+mongodump --uri="mongodb://username:password@your-mongo-host:port/xiaojuSurvey" --out=./backup/mongo-$(date +%Y%m%d)
+
+# 恢复MongoDB
+mongorestore --uri="mongodb://username:password@your-mongo-host:port/xiaojuSurvey" ./backup/mongo-20240101
+```
+
+### 性能优化
+
+#### 1. 配置 Nginx 反向代理（可选）
+
+如果你已有 Nginx，可以配置反向代理：
+
+```nginx
+server {
+    listen 80;
+    server_name survey.yourdomain.com;
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+#### 2. 配置 SSL（推荐）
+
+使用 Let's Encrypt 配置 HTTPS：
+
+```bash
+# 安装 certbot
+apt-get install certbot python3-certbot-nginx
+
+# 获取证书
+certbot --nginx -d survey.yourdomain.com
+
+# 自动续期
+certbot renew --dry-run
+```
+
+### 监控和日志
+
+#### 查看容器资源使用
+
+```bash
+# 实时监控
+docker stats
+
+# 查看特定容器日志
+docker-compose logs --tail=100 -f app
+```
+
+#### 日志文件位置
+
+- Nginx日志：容器内 `/var/log/nginx/`
+- Node.js日志：容器内 `/var/log/nodejs.stdout.log`
+- Supervisor日志：容器内 `/var/log/supervisord.log`
+
+导出日志：
+```bash
+docker-compose exec app cat /var/log/nodejs.stdout.log > app.log
+```
+
+### 故障排查
+
+#### 1. 服务无法启动
+
+```bash
+# 查看详细错误日志
+docker-compose logs app | grep ERROR
+
+# 检查端口占用
+netstat -tuln | grep 8080
+lsof -i:8080
+```
+
+#### 2. MongoDB 连接失败
+
+```bash
+# 测试MongoDB连接
+docker-compose exec app sh
+# 在容器内测试
+nc -zv your-mongo-host port
+```
+
+#### 3. 健康检查失败
+
+```bash
+# 手动测试健康检查
+curl http://localhost:8080/api/health
+
+# 查看健康检查日志
+docker inspect xiaoju-survey_app_1 | grep -A 10 Health
+```
+
+### 高可用部署（进阶）
+
+对于生产环境，建议：
+
+1. **使用外部数据库服务**
+   - 使用云服务商的 MongoDB 服务
+   - 使用云服务商的 Redis 服务
+
+2. **配置负载均衡**
+   - 部署多个应用实例
+   - 使用 Nginx/HAProxy 进行负载均衡
+
+3. **配置监控告警**
+   - 使用 Prometheus + Grafana 监控
+   - 配置服务异常告警
+
+4. **定期备份**
+   - 设置自动备份脚本
+   - 异地备份存储
+
+### Docker 镜像版本选择
 
 我们提供两个 Docker 镜像版本供您选择：
 
@@ -171,9 +395,9 @@ npm run serve
 
 在 `docker-compose.yaml` 中修改镜像标签即可切换版本。
 
-### 一键部署
+### 其他部署方式
 
-_（手册编写中）_
+请查看 [官方部署指导](https://xiaojusurvey.didi.cn/docs/next/document/%E5%B7%A5%E7%A8%8B%E9%83%A8%E7%BD%B2/Docker%E9%83%A8%E7%BD%B2) 了解更多部署选项。
 
 <br />
 
