@@ -4,7 +4,7 @@ import sha256 from 'crypto-js/sha256'
 // 生成axios实例
 const instance = axios.create({
   baseURL: '/api',
-  timeout: 3000
+  timeout: 30000 // 30秒超时
 })
 
 // 对数据进行过滤，将undefined转成空字符串
