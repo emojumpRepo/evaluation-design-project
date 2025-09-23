@@ -1,5 +1,4 @@
-version: "3.8"
-
+version: "3.6"
 services:
   # Redis缓存服务
   redis:
@@ -19,42 +18,27 @@ services:
       retries: 3
       start_period: 5s
 
-  # 应用服务 - 使用Dockerfile构建
-  app:
-    build: 
-      context: .
-      dockerfile: Dockerfile
+  xiaoju-survey:
+    build: .
+    restart: always
     ports:
-      - "8080:8080"
+      - "8080:8080" # API端口
     environment:
-      # MongoDB配置
-      XIAOJU_SURVEY_MONGO_URL: mongodb://root:k765g6hj@dbconn.sealoshzh.site:47633/?directConnection=true
-      XIAOJU_SURVEY_MONGO_AUTH_SOURCE: admin
-      XIAOJU_SURVEY_MONGO_DB_NAME: xiaojuSurvey
+      XIAOJU_SURVEY_MONGO_URL: mongodb://root:k765g6hj@dbconn.sealoshzh.site:47633/?directConnection=true # 外部 MongoDB 连接
+      XIAOJU_SURVEY_MONGO_AUTH_SOURCE: admin # MongoDB 认证数据库
       # Redis配置
       XIAOJU_SURVEY_REDIS_HOST: redis
       XIAOJU_SURVEY_REDIS_PORT: 6379
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      # JWT配置
-      XIAOJU_SURVEY_JWT_SECRET: xiaojuSurveyJwtSecret
-      XIAOJU_SURVEY_JWT_EXPIRES_IN: 8h
-      # 管理员账户
-      ADMIN_USERNAME: admin
-      ADMIN_PASSWORD: emojump.888
-      NODE_ENV: production
+      AImodel_API_URL: ${AImodel_API_URL}
+      AImodel_API_KEY: ${AImodel_API_KEY}
+      AImodel_MODEL: ${AImodel_MODEL}
     depends_on:
       redis:
         condition: service_healthy
     networks:
       - app-network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 40s
 
 volumes:
   redis-data:
