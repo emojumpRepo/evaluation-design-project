@@ -81,7 +81,7 @@ const plugins = isProd ? basePlugins : [...basePlugins, mpaPlugin]
 export default defineConfig({
   // *** 关键修改：在开发环境下，将 base 始终设置为 '/' ***
   // 在生产环境下，为了部署到 /management/ 子路径，base 仍然需要是 /management/
-  base: isProd ? '/management/' : '/',
+  base: '/',
 
   optimizeDeps: {
     include: [
