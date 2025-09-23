@@ -6343,5 +6343,35 @@
       "receivedAt": "2025-09-23T14:36:20.266Z",
       "attemptCount": 3
     }
+  },
+  {
+    "id": 23,
+    "timestamp": "2025-09-23T15:48:57.390Z",
+    "method": "POST",
+    "url": "/psychology/assessment-participant/submit",
+    "headers": {
+      "accept": "application/json, */*",
+      "content-type": "application/json",
+      "tenant-id": "1",
+      "content-length": "224",
+      "user-agent": "node-fetch/1.0 (+https://github.com/bitinn/node-fetch)",
+      "accept-encoding": "gzip,deflate",
+      "host": "localhost:3333",
+      "connection": "keep-alive"
+    },
+    "query": {},
+    "body": {
+      "userId": 157,
+      "answers": "[{\"title\":\"标题1\",\"answer\":\"22\",\"index\":1,\"score\":0},{\"title\":\"标题2\",\"answer\":\"选项2\",\"index\":2,\"score\":0}]",
+      "taskNo": "TASK_20250923164050_749012",
+      "questionnaireId": 19
+    },
+    "attemptCount": 1,
+    "responseStatus": 200,
+    "responseBody": {
+      "code": 0,
+      "msg": "提交成功",
+      "success": true
+    }
   }
 ]

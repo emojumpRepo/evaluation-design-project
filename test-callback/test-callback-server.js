@@ -95,90 +95,53 @@ function logRequest(method, url, headers, body, query, attemptCount, responseSta
   return logEntry;
 }
 
-// 生成响应
+// 生成响应（关闭重试模拟，直接返回成功）
 function generateResponse(attemptCount) {
   let responseStatus = 200;
   let responseBody = {};
   
   console.log(`📊 尝试次数: ${attemptCount}`);
   
-  if (attemptCount === 1) {
-    // 第一次：总是失败
-    const failType = Math.random() > 0.5 ? 'server_error' : 'bad_response';
-    
-    if (failType === 'server_error') {
-      // 服务器错误（会触发重试）
-      responseStatus = 500;
-      responseBody = {
-        code: 500,
-        success: false,
-        error: 'Internal Server Error',
-        message: '服务器内部错误（模拟第一次失败）'
-      };
-      console.log('❌ 第一次尝试：返回500错误（将触发重试）');
-    } else {
-      // 返回200但格式不对（也会触发重试）
-      responseStatus = 200;
-      responseBody = {
-        code: 400,
-        success: false,
-        message: '响应格式不符合预期（模拟第一次失败）'
-      };
-      console.log('❌ 第一次尝试：返回200但格式错误（将触发重试）');
-    }
-  } else if (attemptCount === 2) {
-    // 第二次：随机成功或失败
-    const isSuccess = Math.random() > 0.5;
-    
-    if (isSuccess) {
-      // 成功
-      responseStatus = 200;
-      responseBody = {
-        code: 200,
-        success: true,
-        message: '回调接收成功（第二次尝试成功）',
-        receivedAt: new Date().toISOString()
-      };
-      console.log('✅ 第二次尝试：成功');
-    } else {
-      // 失败
-      const failType = Math.random() > 0.5 ? 'timeout' : 'bad_gateway';
-      
-      if (failType === 'timeout') {
-        responseStatus = 504;
-        responseBody = {
-          code: 504,
-          success: false,
-          error: 'Gateway Timeout',
-          message: '网关超时（模拟第二次失败）'
-        };
-        console.log('❌ 第二次尝试：返回504超时（将触发重试）');
-      } else {
-        responseStatus = 502;
-        responseBody = {
-          code: 502,
-          success: false,
-          error: 'Bad Gateway',
-          message: '网关错误（模拟第二次失败）'
-        };
-        console.log('❌ 第二次尝试：返回502错误（将触发重试）');
-      }
-    }
-  } else {
-    // 第三次及以后：总是成功
-    responseStatus = 200;
-    responseBody = {
-      code: 200,
-      success: true,
-      message: `回调接收成功（第${attemptCount}次尝试）`,
-      receivedAt: new Date().toISOString(),
-      attemptCount: attemptCount
-    };
-    console.log(`✅ 第${attemptCount}次尝试：成功`);
-  }
+  // 直接返回成功，不再模拟失败
+  responseStatus = 200;
+  responseBody = {
+    code: 200,
+    success: true,
+    message: `回调接收成功（第${attemptCount}次尝试）`,
+    receivedAt: new Date().toISOString(),
+    attemptCount: attemptCount
+  };
+  console.log(`✅ 第${attemptCount}次尝试：成功`);
   
   return { responseStatus, responseBody };
 }
+
+// 测评管理后台接口（全局回调）
+app.post('/psychology/assessment-participant/submit', (req, res) => {
+  console.log('\n========== 接收到管理后台提交请求 ==========');
+  console.log('时间:', new Date().toLocaleString('zh-CN'));
+  console.log('Headers:', JSON.stringify(req.headers, null, 2));
+  console.log('Body:', JSON.stringify(req.body, null, 2));
+  
+  const logEntry = logRequest('POST', req.url, req.headers, req.body, req.query, 1, 200, {
+    code: 0,
+    msg: '提交成功',
+    success: true
+  });
+  
+  // 返回管理后台期望的格式
+  res.json({
+    code: 0,
+    msg: '提交成功', 
+    data: {
+      id: Date.now(),
+      logId: logEntry.id
+    }
+  });
+  
+  console.log('响应: 200 OK (管理后台格式)');
+  console.log('=====================================\n');
+});
 
 // POST 回调接口
 app.post('/callback', (req, res) => {
