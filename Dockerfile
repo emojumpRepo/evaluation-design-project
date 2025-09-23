@@ -3,13 +3,16 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
+# 设置npm镜像源为淘宝镜像
+RUN npm config set registry https://registry.npmmirror.com
+
 # 复制package文件
 COPY web/package*.json ./web/
 COPY server/package*.json ./server/
 
-# 安装依赖
-RUN cd web && npm install && \
-    cd ../server && npm install
+# 安装依赖（使用淘宝镜像源）
+RUN cd web && npm install --registry=https://registry.npmmirror.com && \
+    cd ../server && npm install --registry=https://registry.npmmirror.com
 
 # 复制源代码
 COPY web ./web
