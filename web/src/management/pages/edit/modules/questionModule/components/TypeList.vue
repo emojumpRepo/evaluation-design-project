@@ -33,6 +33,31 @@
         </template>
       </draggable>
     </el-collapse-item>
+    <el-collapse-item
+      v-for="(item, index) of descriptionMenuGroup"
+      :title="item.title"
+      :name="questionMenuConfig.length + index"
+      :key="'desc-' + index"
+    >
+      <div class="questiontype-list">
+        <div
+          v-for="element in item.questionList"
+          :key="element.type"
+          class="qtopic-item"
+          :id="'qtopic' + element.type"
+          @click="onQuestionType({ type: element.type })"
+        >
+          <i
+            class="iconfont"
+            :class="['icon-' + element.icon]"
+            @mouseenter="showPreview(element, 'qtopic' + element.type)"
+            @mouseleave="isShowPreviewImage = false"
+            @mousedown="isShowPreviewImage = false"
+          ></i>
+          <p class="text">{{ element.title }}</p>
+        </div>
+      </div>
+    </el-collapse-item>
     <Teleport to="body">
       <div class="preview-popover" v-show="isShowPreviewImage" :style="{ top: previewTop + 'px' }">
         <img :src="previewImg" class="preview-image" />
@@ -48,6 +73,7 @@ import draggable from 'vuedraggable'
 import { DND_GROUP } from '@/management/config/dnd'
 
 import questionMenuConfig, { questionTypeList } from '@/management/config/questionMenuConfig'
+import descriptionMenuGroup from '@/management/config/descriptionConfig'
 import { storeToRefs } from 'pinia'
 import { useEditStore } from '@/management/stores/edit'
 import { ref } from 'vue'
@@ -57,7 +83,7 @@ const { newQuestionIndex, schema } = storeToRefs(editStore)
 const { addQuestion, setCurrentEditOne, getSorter, createNewQuestion } = editStore
 
 
-const activeNames = ref([0, 1, 2])
+const activeNames = ref([0, 1, 2, 3])
 const previewImg = ref('')
 const isShowPreviewImage = ref(false)
 const previewTop = ref(0)
@@ -67,16 +93,21 @@ questionLoader.init({
 })
 
 const onQuestionType = ({ type }) => {
-  const newQuestion = createNewQuestion({ type });
-  addQuestion({ question: newQuestion, index: newQuestionIndex.value });
-  setTimeout(() => {
-    const { endIndex } = getSorter();
-    if(endIndex === newQuestionIndex.value) {
-      setCurrentEditOne(endIndex - 1);
-    } else {
-      setCurrentEditOne(newQuestionIndex.value);
-    }
-  });
+  if (type === 'description') {
+    // 处理描述文本组件 - 直接选中，不添加到题目列表
+    setCurrentEditOne('description');
+  } else {
+    const newQuestion = createNewQuestion({ type });
+    addQuestion({ question: newQuestion, index: newQuestionIndex.value });
+    setTimeout(() => {
+      const { endIndex } = getSorter();
+      if(endIndex === newQuestionIndex.value) {
+        setCurrentEditOne(endIndex - 1);
+      } else {
+        setCurrentEditOne(newQuestionIndex.value);
+      }
+    });
+  }
 };
 
 const onDragEnd = (event) => {

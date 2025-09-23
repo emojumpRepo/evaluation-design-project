@@ -8,6 +8,9 @@ export class CreateSurveyDto {
   @ApiProperty({ description: '问卷备注', required: false })
   remark: string;
 
+  @ApiProperty({ description: '问卷编码', required: false })
+  surveyCode?: string;
+
   @ApiProperty({ description: '问卷类型，复制问卷必传', required: false })
   surveyType: string;
 
@@ -29,10 +32,17 @@ export class CreateSurveyDto {
   @ApiProperty({ description: '题目列表', required: false })
   questionList?: Array<any>;
 
+  @ApiProperty({ description: '分页配置', required: false })
+  pageConf?: number[];
+
+  @ApiProperty({ description: '描述配置', required: false })
+  descriptionConfig?: any;
+
   static validate(data) {
     return Joi.object({
       title: Joi.string().required(),
       remark: Joi.string().allow(null, '').default(''),
+      surveyCode: Joi.string().required(),
       surveyType: Joi.string().when('createMethod', {
         is: 'copy',
         then: Joi.allow(null),
@@ -51,6 +61,8 @@ export class CreateSurveyDto {
       groupId: Joi.string().allow(null, ''),
       isCollaborated: Joi.boolean().allow(null, false).default(false),
       questionList: Joi.allow(null),
+      pageConf: Joi.array().items(Joi.number()).allow(null),
+      descriptionConfig: Joi.allow(null),
     }).validate(data);
   }
 }

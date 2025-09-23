@@ -167,6 +167,25 @@ export const useSurveyStore = defineStore('survey', () => {
 
     questionStore.initOptionCountInfo()
 
+    // 运行时重复 field 监测，仅报警不改数据
+    try {
+      const list = option?.dataConf?.dataList || []
+      const map = list.reduce((m, q, i) => {
+        const k = q?.field
+        if (!k) return m
+        if (!m[k]) m[k] = []
+        m[k].push(i + 1)
+        return m
+      }, {})
+      const dups = Object.entries(map).filter(([, v]) => Array.isArray(v) && v.length > 1)
+      if (dups.length) {
+        // eslint-disable-next-line no-console
+        console.warn('检测到重复 field（题号列表）：', dups)
+      }
+    } catch (e) {
+      // ignore
+    }
+
   }
 
   const initSurvey = (option) => {

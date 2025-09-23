@@ -26,6 +26,14 @@
         />
         <p class="form-item-tip">备注仅自己可见</p>
       </el-form-item>
+      <el-form-item prop="surveyCode" label="问卷编码">
+        <el-input
+          v-model="form.surveyCode"
+          :class="form.surveyCode ? 'nonempty' : 'empty'"
+          placeholder="请输入问卷编码"
+        />
+        <p class="form-item-tip">问卷编码是问卷的唯一标识，要确保唯一性</p>
+      </el-form-item>
       <el-form-item prop="groupId" label="分组" v-if="menuType === MenuType.PersonalGroup">
         <el-select v-model="form.groupId" placeholder="未分组" clearable>
           <el-option
@@ -78,6 +86,7 @@ const state = reactive({
   form: {
     title: '问卷调研',
     remark: '问卷调研',
+      surveyCode: '',
     groupId:
       groupId.value === GroupState.All || groupId.value === GroupState.Not ? '' : groupId.value
   }

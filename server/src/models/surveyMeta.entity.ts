@@ -11,6 +11,9 @@ export class SurveyMeta extends BaseEntity {
   remark: string;
 
   @Column()
+  surveyCode: string;
+
+  @Column()
   surveyType: string;
 
   @Column()

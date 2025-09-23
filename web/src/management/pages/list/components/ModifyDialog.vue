@@ -18,6 +18,10 @@
       <el-form-item label="标题" prop="title">
         <el-input v-model="current.title" />
       </el-form-item>
+      <el-form-item label="问卷编码" prop="surveyCode">
+        <el-input v-model="current.surveyCode" placeholder="请输入问卷编码" />
+        <p class="form-item-tip">问卷编码是问卷的唯一标识，要确保唯一性</p>
+      </el-form-item>
       <el-form-item label="备注">
         <el-input v-model="current.remark" />
       </el-form-item>
@@ -73,7 +77,8 @@ export default {
       MenuType,
       loadingInstance: null,
       rules: {
-        title: [{ required: true, message: '请输入问卷标题', trigger: 'blur' }]
+        title: [{ required: true, message: '请输入问卷标题', trigger: 'blur' }],
+        surveyCode: [{ required: true, message: '请输入问卷编码', trigger: 'blur' }]
       },
       current: this.getCurrent(this.questionInfo)
     }
@@ -89,7 +94,7 @@ export default {
   methods: {
     getCurrent(val) {
       return {
-        ..._pick(val, ['title', 'remark', 'isCollaborated']),
+        ..._pick(val, ['title', 'remark', 'isCollaborated', 'surveyCode']),
         groupId: val.groupId === null ? '' : val.groupId
       }
     },

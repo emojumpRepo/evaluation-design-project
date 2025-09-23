@@ -168,6 +168,11 @@ export const useQuestionStore = defineStore('question', () => {
   const addPageIndex = () => {
     pageIndex.value++
   }
+  const subPageIndex = () => {
+    if (pageIndex.value > 1) {
+      pageIndex.value--
+    }
+  }
 
   const getSorter = () => {
     let startIndex = 0
@@ -236,6 +241,7 @@ export const useQuestionStore = defineStore('question', () => {
     isFinallyPage,
     pageIndex,
     addPageIndex,
+    subPageIndex,
     setQuestionData,
     changeSelectMoreData,
     setQuestionSeq,
