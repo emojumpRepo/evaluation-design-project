@@ -3,24 +3,25 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-# 设置npm镜像源为淘宝镜像
-RUN npm config set registry https://registry.npmmirror.com
+# 安装pnpm并设置镜像源
+RUN npm install -g pnpm && \
+    pnpm config set registry https://registry.npmmirror.com
 
-# 复制package文件 - 优化缓存
-COPY web/package*.json ./web/
-COPY server/package*.json ./server/
+# 复制package文件和锁文件 - 优化缓存
+COPY web/package*.json web/pnpm-lock.yaml* ./web/
+COPY server/package*.json server/pnpm-lock.yaml* ./server/
 
 # 安装依赖（使用淘宝镜像源）
-RUN cd web && npm ci --registry=https://registry.npmmirror.com && \
-    cd ../server && npm ci --registry=https://registry.npmmirror.com
+RUN cd web && pnpm install --frozen-lockfile --registry=https://registry.npmmirror.com && \
+    cd ../server && pnpm install --frozen-lockfile --registry=https://registry.npmmirror.com
 
 # 复制源代码
 COPY web ./web
 COPY server ./server
 
 # 构建
-RUN cd web && npm run build && \
-    cd ../server && npm run build
+RUN cd web && pnpm run build && \
+    cd ../server && pnpm run build
 
 # 运行阶段
 FROM node:18-alpine
