@@ -42,19 +42,21 @@ onMounted(() => {
     surveyStore.setUserId(params.userId)
     surveyStore.setAssessmentNo(params.assessmentNo)
     surveyStore.setQuestionId(params.questionId)
+    surveyStore.setTenantId(params.tenantId)
     surveyStore.setRedirectUrl(params.redirect)
     console.log('使用缓存的参数:', params)
     getDetail(surveyId)
-  } else if (route.query.userId || route.query.assessmentNo || route.query.questionId || route.query.redirect) {
+  } else if (route.query.userId || route.query.assessmentNo || route.query.questionId || route.query.tenantId || route.query.redirect) {
     console.log('检测到URL参数，准备缓存和跳转')
     // 如果URL中有参数，验证必填参数并缓存
     const userId = route.query.userId as string
     const assessmentNo = route.query.assessmentNo as string
     const questionId = route.query.questionId as string
+    const tenantId = route.query.tenantId as string
     const redirect = route.query.redirect as string
     const timestamp = route.query.t as string
     
-    console.log('解析的参数:', { userId, assessmentNo, questionId, redirect, timestamp })
+    console.log('解析的参数:', { userId, assessmentNo, questionId, tenantId, redirect, timestamp })
     
     // 验证必填参数
     if (!userId) {
@@ -71,6 +73,7 @@ onMounted(() => {
       userId: userId || '',
       assessmentNo: assessmentNo || '',
       questionId: questionId || '',
+      tenantId: tenantId || '',
       redirect: redirect || '',
       timestamp: timestamp || Date.now().toString()
     }
@@ -80,6 +83,7 @@ onMounted(() => {
     // 设置到store
     surveyStore.setSurveyPath(surveyId)
     surveyStore.setUserId(params.userId)
+    surveyStore.setTenantId(params.tenantId)
     surveyStore.setAssessmentNo(params.assessmentNo)
     surveyStore.setQuestionId(params.questionId)
     surveyStore.setRedirectUrl(params.redirect)
@@ -109,6 +113,7 @@ onMounted(() => {
     surveyStore.setUserId('')
     surveyStore.setAssessmentNo('')
     surveyStore.setQuestionId('')
+    surveyStore.setTenantId('')
     surveyStore.setRedirectUrl('')
     getDetail(surveyId)
   }

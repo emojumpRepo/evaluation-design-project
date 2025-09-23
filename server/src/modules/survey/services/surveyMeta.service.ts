@@ -83,7 +83,7 @@ export class SurveyMetaService {
     });
 
     const savedSurvey = await this.surveyRepository.save(newSurvey);
-    
+
     // 添加虚拟字段
     if (isCollaborated !== undefined) {
       savedSurvey.isCollaborated = isCollaborated;
@@ -178,7 +178,7 @@ export class SurveyMetaService {
           operatorId,
           isCompleteDeleted: true,
         },
-      }
+      },
     );
   }
 
@@ -206,7 +206,7 @@ export class SurveyMetaService {
     } = condition;
     const skip = (pageNum - 1) * pageSize;
     try {
-      var query: ObjectLiteral
+      var query: ObjectLiteral;
       if (isRecycleBin) {
         query = Object.assign(
           {
@@ -215,7 +215,7 @@ export class SurveyMetaService {
             },
             isCompleteDeleted: {
               $ne: true,
-            }
+            },
           },
           condition.filter,
         );
@@ -237,15 +237,15 @@ export class SurveyMetaService {
             _id: {
               $in: surveyIdList.map((item) => new ObjectId(item)),
             },
-            isDeleted: {$eq: true},
-            isCompleteDeleted: {$ne: true},
+            isDeleted: { $eq: true },
+            isCompleteDeleted: { $ne: true },
           });
         } else {
           query.$or.push({
             _id: {
               $in: surveyIdList.map((item) => new ObjectId(item)),
             },
-            isDeleted: {$ne: true},
+            isDeleted: { $ne: true },
           });
         }
       }
@@ -302,8 +302,9 @@ export class SurveyMetaService {
       } else {
         Object.assign(query, otherQuery);
       }
-      const order = isRecycleBin ? ({deletedAt: -1} as FindOptionsOrder<SurveyMeta>)
-        :condition.order && Object.keys(condition.order).length > 0
+      const order = isRecycleBin
+        ? ({ deletedAt: -1 } as FindOptionsOrder<SurveyMeta>)
+        : condition.order && Object.keys(condition.order).length > 0
           ? (condition.order as FindOptionsOrder<SurveyMeta>)
           : ({
               createdAt: -1,
@@ -348,17 +349,22 @@ export class SurveyMetaService {
     return total;
   }
 
-  async getSurveyMetaListByWorkspaceIdList({ workspaceIdList, isDeleted }: {workspaceIdList: string[]; isDeleted?: boolean;}) {
+  async getSurveyMetaListByWorkspaceIdList({
+    workspaceIdList,
+    isDeleted,
+  }: {
+    workspaceIdList: string[];
+    isDeleted?: boolean;
+  }) {
     const surveyMetaList = await this.surveyRepository.find({
       workspaceId: {
         $in: workspaceIdList,
       },
-      isDeleted: isDeleted? {$eq: true}:{$ne: true},
-      isCompleteDeleted: {$ne: true},
+      isDeleted: isDeleted ? { $eq: true } : { $ne: true },
+      isCompleteDeleted: { $ne: true },
     });
     return surveyMetaList;
   }
-
 
   async countSurveyMetaByGroupId({
     groupId,
@@ -378,11 +384,11 @@ export class SurveyMetaService {
         _id: {
           $in: surveyIdList.map((item) => new ObjectId(item)),
         },
-        isDeleted: isRecycleBin? {$eq: true}:{$ne: true},
-        isCompleteDeleted: {$ne: true}
+        isDeleted: isRecycleBin ? { $eq: true } : { $ne: true },
+        isCompleteDeleted: { $ne: true },
       });
     }
-    var otherQuery: ObjectLiteral
+    var otherQuery: ObjectLiteral;
 
     if (isRecycleBin) {
       otherQuery = {
@@ -390,7 +396,7 @@ export class SurveyMetaService {
         isDeleted: {
           $eq: true,
         },
-        isCompleteDeleted: {$ne: true},
+        isCompleteDeleted: { $ne: true },
       };
     } else {
       otherQuery = {

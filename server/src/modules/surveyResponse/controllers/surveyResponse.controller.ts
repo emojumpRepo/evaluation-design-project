@@ -1,4 +1,5 @@
 import { Controller, Post, Body, HttpCode, UseGuards } from '@nestjs/common';
+import axios from 'axios';
 import { HttpException } from 'src/exceptions/httpException';
 import { SurveyNotFoundException } from 'src/exceptions/surveyNotFoundException';
 import { checkSign } from 'src/utils/checkSign';
@@ -53,8 +54,15 @@ export class SurveyResponseController {
   @HttpCode(200)
   async createResponse(@Body() reqBody) {
     const value = await this.validateParams(reqBody);
-    const { encryptType, data, sessionId, userId, assessmentId, questionId } =
-      value;
+    const {
+      encryptType,
+      data,
+      sessionId,
+      userId,
+      assessmentId,
+      questionId,
+      tenantId,
+    } = value;
 
     // 检查签名
     checkSign(reqBody);
@@ -68,6 +76,8 @@ export class SurveyResponseController {
     let originalAssessmentId = '';
     let encryptQuestionId = '';
     let originalQuestionId = '';
+    let encryptTenantId = '';
+    let originalTenantId = '';
     if (
       encryptType === ENCRYPT_TYPE.RSA &&
       Array.isArray(data) &&
@@ -82,11 +92,14 @@ export class SurveyResponseController {
         sessionId,
       );
       encryptQuestionId = await this.getDecryptedDataRSA(questionId, sessionId);
+      encryptTenantId = await this.getDecryptedDataRSA(tenantId, sessionId);
     }
     formValues = JSON.parse(JSON.stringify(result));
     originalUserId = encryptUserId;
     originalAssessmentId = encryptAssessmentId;
     originalQuestionId = encryptQuestionId;
+    // 非加密通道时，直接透传字符串 tenantId
+    originalTenantId = encryptTenantId || (value as any)?.tenantId || '';
     try {
       const responseData = await this.createResponseProcess({
         ...value,
@@ -94,6 +107,7 @@ export class SurveyResponseController {
         userId: originalUserId,
         assessmentId: originalAssessmentId,
         questionId: originalQuestionId,
+        tenantId: originalTenantId,
       });
       return {
         code: 200,
@@ -127,7 +141,12 @@ export class SurveyResponseController {
         : JSON.parse(JSON.stringify(data));
     try {
       const responseData = await this.createResponseProcess(
-        { ...value, data: formValues, channelId },
+        {
+          ...value,
+          data: formValues,
+          channelId,
+          tenantId: (reqBody as any)?.tenantId,
+        },
         false,
       );
       return {
@@ -156,6 +175,7 @@ export class SurveyResponseController {
       userId: Joi.array().items(Joi.string()).allow(null, ''),
       assessmentId: Joi.array().items(Joi.string()).allow(null, ''),
       questionId: Joi.array().items(Joi.string()).allow(null, ''),
+      tenantId: Joi.array().items(Joi.string()).allow(null, ''),
     }).validate(reqBody, { allowUnknown: true });
 
     if (error) {
@@ -203,18 +223,18 @@ export class SurveyResponseController {
   // 辅助方法：映射题目类型
   private mapQuestionType(type: string): string {
     const typeMap = {
-      'RADIO': 'single_choice',
-      'radio': 'single_choice',
-      'CHECKBOX': 'multiple_choice',
-      'checkbox': 'multiple_choice',
-      'INPUT': 'text',
-      'input': 'text',
-      'TEXTAREA': 'textarea',
-      'textarea': 'textarea',
-      'NUMBER': 'number',
-      'number': 'number',
-      'RADIO_STAR': 'rating',
-      'radio_star': 'rating',
+      RADIO: 'single_choice',
+      radio: 'single_choice',
+      CHECKBOX: 'multiple_choice',
+      checkbox: 'multiple_choice',
+      INPUT: 'text',
+      input: 'text',
+      TEXTAREA: 'textarea',
+      textarea: 'textarea',
+      NUMBER: 'number',
+      number: 'number',
+      RADIO_STAR: 'rating',
+      radio_star: 'rating',
     };
     return typeMap[type] || 'other';
   }
@@ -230,10 +250,11 @@ export class SurveyResponseController {
   // 辅助方法：生成建议
   private generateRecommendations(calculationResult: any): string[] {
     if (!calculationResult) return [];
-    
+
     const recommendations = [];
-    const level = calculationResult?.depressionLevel || calculationResult?.level;
-    
+    const level =
+      calculationResult?.depressionLevel || calculationResult?.level;
+
     if (level === '轻度抑郁') {
       recommendations.push('建议关注情绪健康');
       recommendations.push('保持规律作息');
@@ -247,7 +268,7 @@ export class SurveyResponseController {
       recommendations.push('联系心理医生或精神科医生');
       recommendations.push('保持与亲友的联系');
     }
-    
+
     return recommendations;
   }
 
@@ -301,7 +322,7 @@ export class SurveyResponseController {
         questionItem.type === QUESTION_TYPE.CASCADER &&
         questionItem.cascaderData
       ) {
-        let optionTextMap = {};
+        const optionTextMap = {} as Record<string, string>;
         let currentLevel = questionItem.cascaderData.children;
         const path = String(userValue).split(',');
         const arr = path.map((hash) => {
@@ -335,6 +356,7 @@ export class SurveyResponseController {
       originalUserId,
       originalQuestionId,
       originalAssessmentId,
+      originalTenantId,
     } = params;
     // 格式化所有题目和答案
     const allAnswers = SurveyResponseController.formatAllAnswers(
@@ -345,11 +367,13 @@ export class SurveyResponseController {
 
     // 检查参数是否有效（排除字符串'undefined'和空值）
     const isValidParam = (param: any) => {
-      return param && 
-             param !== 'undefined' && 
-             param !== undefined && 
-             param !== null &&
-             param !== '';
+      return (
+        param &&
+        param !== 'undefined' &&
+        param !== undefined &&
+        param !== null &&
+        param !== ''
+      );
     };
 
     // 发送加密后的问卷结果
@@ -365,6 +389,7 @@ export class SurveyResponseController {
           allAnswers: JSON.stringify(allAnswers),
           assessmentId: originalAssessmentId,
           questionId: originalQuestionId,
+          tenantId: originalTenantId,
         });
       } catch (error) {
         console.error('发送问卷结果失败', error);
@@ -373,7 +398,9 @@ export class SurveyResponseController {
       }
     } else {
       // 如果参数无效，只记录日志，不发送
-      this.logger.info(`跳过发送问卷结果，参数无效: userId=${originalUserId}, assessmentId=${originalAssessmentId}, questionId=${originalQuestionId}`);
+      this.logger.info(
+        `跳过发送问卷结果，参数无效: userId=${originalUserId}, assessmentId=${originalAssessmentId}, questionId=${originalQuestionId}`,
+      );
     }
   }
 
@@ -389,6 +416,7 @@ export class SurveyResponseController {
       userId: originalUserId,
       assessmentId: originalAssessmentId,
       questionId: originalQuestionId,
+      tenantId: originalTenantId,
     } = params;
 
     // 查询schema
@@ -552,7 +580,7 @@ export class SurveyResponseController {
     // 执行结果计算
     let calculationResult = null;
     const calculateConf = (responseSchema?.code as any)?.calculateConf;
-    
+
     // 添加详细的调试日志
     console.log('=== 计算配置调试 ===');
     console.log('calculateConf:', calculateConf);
@@ -562,33 +590,39 @@ export class SurveyResponseController {
     if (calculateConf?.code) {
       console.log(`code preview: ${calculateConf.code.substring(0, 100)}...`);
     }
-    
-    this.logger.info(`计算配置调试: enabled=${calculateConf?.enabled}, hasCode=${!!calculateConf?.code}, codeLength=${calculateConf?.code?.length || 0}`);
-    
+
+    this.logger.info(
+      `计算配置调试: enabled=${calculateConf?.enabled}, hasCode=${!!calculateConf?.code}, codeLength=${calculateConf?.code?.length || 0}`,
+    );
+
     if (calculateConf?.enabled && calculateConf?.code) {
       console.log('开始执行结果计算...');
       this.logger.info('开始执行结果计算');
       // 使用正确的题目数据源
-      const questionList = (responseSchema?.code as any)?.questionDataList || 
-                          responseSchema?.code?.dataConf?.dataList || [];
-      
+      const questionList =
+        (responseSchema?.code as any)?.questionDataList ||
+        responseSchema?.code?.dataConf?.dataList ||
+        [];
+
       console.log(`题目列表长度: ${questionList.length}`);
       this.logger.info(`题目列表长度: ${questionList.length}`);
-      
+
       try {
         calculationResult = await this.calculateService.processCalculation(
           calculateConf,
           formValues,
           questionList,
         );
-        
+
         console.log('计算结果:', calculationResult);
-        this.logger.info(`计算结果: ${JSON.stringify(calculationResult).substring(0, 200)}`);
+        this.logger.info(
+          `计算结果: ${JSON.stringify(calculationResult).substring(0, 200)}`,
+        );
       } catch (calcError) {
         console.error('计算执行错误:', calcError);
         this.logger.error(`计算执行错误: ${calcError.message}`);
       }
-      
+
       // 如果有计算结果，保存到响应记录中
       if (calculationResult && !calculationResult.error) {
         await this.surveyResponseService.updateCalculationResult(
@@ -607,10 +641,14 @@ export class SurveyResponseController {
     // 执行后端回调配置（优先使用问卷独立配置）
     const submitConf = responseSchema?.code?.submitConf;
     const callbackConfig = (submitConf as any)?.callbackConfig;
-    
-    this.logger.info(`回调配置调试信息: submitConf=${JSON.stringify((submitConf as any)?.callbackConfig || {})}`);
-    this.logger.info(`回调启用状态: enabled=${callbackConfig?.enabled}, url=${callbackConfig?.url}`);
-    
+
+    this.logger.info(
+      `回调配置调试信息: submitConf=${JSON.stringify((submitConf as any)?.callbackConfig || {})}`,
+    );
+    this.logger.info(
+      `回调启用状态: enabled=${callbackConfig?.enabled}, url=${callbackConfig?.url}`,
+    );
+
     if (callbackConfig?.enabled && callbackConfig?.url) {
       // 使用问卷独立配置的回调
       this.logger.info(`使用问卷独立回调配置: ${callbackConfig.url}`);
@@ -682,7 +720,7 @@ export class SurveyResponseController {
     try {
       // 格式化题目和答案数据
       const dataList = responseSchema.code.dataConf.dataList;
-      const questions = dataList.map((questionItem, idx) => {
+      const questions = dataList.map((questionItem) => {
         const userValue = formValues[questionItem.field];
         const questionData = {
           questionId: questionItem.field,
@@ -705,19 +743,26 @@ export class SurveyResponseController {
           if (userValue) {
             if (Array.isArray(userValue)) {
               // 多选题
-              questionData.userAnswer = userValue.map(hash => {
-                const optIdx = questionItem.options.findIndex(opt => opt.hash === hash);
+              questionData.userAnswer = userValue.map((hash) => {
+                const optIdx = questionItem.options.findIndex(
+                  (opt) => opt.hash === hash,
+                );
                 return optIdx >= 0 ? String.fromCharCode(65 + optIdx) : hash;
               });
               questionData.answerScore = userValue.reduce((sum, hash) => {
-                const opt = questionItem.options.find(o => o.hash === hash);
+                const opt = questionItem.options.find((o) => o.hash === hash);
                 return sum + (opt?.score || 0);
               }, 0);
             } else {
               // 单选题
-              const optIdx = questionItem.options.findIndex(opt => opt.hash === userValue);
-              questionData.userAnswer = optIdx >= 0 ? String.fromCharCode(65 + optIdx) : userValue;
-              const selectedOpt = questionItem.options.find(opt => opt.hash === userValue);
+              const optIdx = questionItem.options.findIndex(
+                (opt) => opt.hash === userValue,
+              );
+              questionData.userAnswer =
+                optIdx >= 0 ? String.fromCharCode(65 + optIdx) : userValue;
+              const selectedOpt = questionItem.options.find(
+                (opt) => opt.hash === userValue,
+              );
               questionData.answerScore = selectedOpt?.score || 0;
             }
           }
@@ -734,15 +779,20 @@ export class SurveyResponseController {
       const callbackData = {
         eventId: `evt_${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}${String(new Date().getDate()).padStart(2, '0')}${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`,
         questionnaireName: responseSchema.title || '问卷调查',
-        questionnaireType: calculationResult?.scaleType ? this.extractScaleType(calculationResult.scaleType) : 'GENERAL',
-        user: { 
+        questionnaireType: calculationResult?.scaleType
+          ? this.extractScaleType(calculationResult.scaleType)
+          : 'GENERAL',
+        user: {
           userId: originalUserId || 'anonymous',
         },
         result: {
           status: 'completed',
           rawScore: calculationResult?.rawScore || 0,
           standardScore: calculationResult?.standardScore || 0,
-          level: calculationResult?.depressionLevel || calculationResult?.level || '未评级',
+          level:
+            calculationResult?.depressionLevel ||
+            calculationResult?.level ||
+            '未评级',
           interpretation: calculationResult?.interpretation || '',
           recommendations: this.generateRecommendations(calculationResult),
           dimensions: calculationResult?.dimensions || [],
@@ -756,7 +806,7 @@ export class SurveyResponseController {
       const headers = {
         'Content-Type': 'application/json',
       };
-      
+
       // 如果启用了自定义headers
       if (callbackConfig.headersEnabled && callbackConfig.headers) {
         try {
@@ -774,7 +824,6 @@ export class SurveyResponseController {
 
       while (attempt <= retryCount) {
         try {
-          const axios = require('axios');
           const response = await axios({
             method: callbackConfig.method || 'POST',
             url: callbackConfig.url,

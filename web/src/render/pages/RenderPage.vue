@@ -141,6 +141,7 @@ const normalizationRequestBody = () => {
   const userId = surveyStore.userId
   const assessmentId = surveyStore.assessmentNo
   const questionId = surveyStore.questionId
+  const tenantId = surveyStore.tenantId
 
   const result: any = {
     surveyPath: surveyPath.value,
@@ -150,6 +151,7 @@ const normalizationRequestBody = () => {
     userId,
     assessmentId,
     questionId,
+    tenantId,
     ...whiteData.value
   }
 
@@ -181,6 +183,11 @@ const normalizationRequestBody = () => {
 
     result.questionId = encrypt[result.encryptType as 'rsa']({
       data: result.questionId,
+      secretKey: encryptInfo?.data?.secretKey
+    })
+
+    result.tenantId = encrypt[result.encryptType as 'rsa']({
+      data: result.tenantId,
       secretKey: encryptInfo?.data?.secretKey
     })
 
@@ -280,6 +287,7 @@ const submitSurvey = async () => {
       notifyComplete({
         userId: surveyStore.userId,
         assessmentNo: surveyStore.assessmentNo,
+        tenantId: surveyStore.tenantId,
         questionId: surveyStore.questionId,
         surveyPath: surveyPath.value,
       })

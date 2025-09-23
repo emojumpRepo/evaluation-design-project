@@ -239,7 +239,9 @@ describe('AuthController', () => {
     });
 
     it('it should return weak', async () => {
-      await expect(controller.getPasswordStrength('emojump.888')).resolves.toEqual({
+      await expect(
+        controller.getPasswordStrength('emojump.888'),
+      ).resolves.toEqual({
         code: 200,
         data: 'Weak',
       });

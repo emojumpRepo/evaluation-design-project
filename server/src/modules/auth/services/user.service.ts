@@ -17,11 +17,20 @@ export class UserService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
-    const adminUsername = this.configService.get<string>('ADMIN_USERNAME', 'admin');
-    const adminPassword = this.configService.get<string>('ADMIN_PASSWORD', 'emojump.888');
+    const adminUsername = this.configService.get<string>(
+      'ADMIN_USERNAME',
+      'admin',
+    );
+    const adminPassword = this.configService.get<string>(
+      'ADMIN_PASSWORD',
+      'emojump.888',
+    );
     const admin = await this.getUserByUsername(adminUsername);
     if (!admin) {
-      await this.createUser({ username: adminUsername, password: adminPassword });
+      await this.createUser({
+        username: adminUsername,
+        password: adminPassword,
+      });
       console.log(`Admin user created: ${adminUsername}`);
     }
   }

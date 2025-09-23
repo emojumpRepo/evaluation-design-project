@@ -31,10 +31,18 @@ export class SurveyConfService {
     pageConf?: number[];
     descriptionConfig?: any;
   }) {
-    const { surveyId, surveyType, createMethod, createFrom, questionList, code, pageConf, descriptionConfig } =
-      params;
+    const {
+      surveyId,
+      surveyType,
+      createMethod,
+      createFrom,
+      questionList,
+      code,
+      pageConf,
+      descriptionConfig,
+    } = params;
     let schemaData = null;
-    
+
     // 如果直接提供了code，优先使用
     if (code) {
       schemaData = code;
@@ -137,8 +145,13 @@ export class SurveyConfService {
    * 确保 dataList 中每道题的 field 唯一，且选项 hash 非空且唯一。
    * 如发现重复/空值，将自动修正为新的随机值（仅在本次 schema 内保证唯一）。
    */
-  private ensureUniqueFieldsAndHashes(schema: SurveySchemaInterface): SurveySchemaInterface {
-    if (!schema?.dataConf?.dataList || !Array.isArray(schema.dataConf.dataList)) {
+  private ensureUniqueFieldsAndHashes(
+    schema: SurveySchemaInterface,
+  ): SurveySchemaInterface {
+    if (
+      !schema?.dataConf?.dataList ||
+      !Array.isArray(schema.dataConf.dataList)
+    ) {
       return schema;
     }
     const usedFields = new Set<string>();
@@ -169,10 +182,16 @@ export class SurveyConfService {
         used.add(h);
       }
     };
-    for (const item of schema.dataConf.dataList as Array<DataItem & { extraOptions?: Option[] }>) {
+    for (const item of schema.dataConf.dataList as Array<
+      DataItem & { extraOptions?: Option[] }
+    >) {
       if (!item) continue;
       let { field } = item as any;
-      if (typeof field !== 'string' || field.trim() === '' || usedFields.has(field)) {
+      if (
+        typeof field !== 'string' ||
+        field.trim() === '' ||
+        usedFields.has(field)
+      ) {
         field = genField();
         (item as any).field = field;
       }
