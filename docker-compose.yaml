@@ -1,19 +1,16 @@
 version: "3"
 
 services:
-  # MongoDB数据库
-  mongo:
-    image: mongo:7.0
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: root
-      MONGO_INITDB_ROOT_PASSWORD: k765g6hj
-      MONGO_INITDB_DATABASE: xiaojuSurvey
+  # Redis缓存服务（保留本地Redis）
+  redis:
+    image: redis:7.0-alpine
     ports:
-      - "27017:27017"
+      - "6379:6379"
     volumes:
-      - mongo-data:/data/db
+      - redis-data:/data
     networks:
       - app-network
+    command: redis-server --appendonly yes
 
   # 生产模式 - 使用Dockerfile构建
   app:
@@ -21,21 +18,25 @@ services:
     ports:
       - "8080:8080"
     environment:
-      XIAOJU_SURVEY_MONGO_URL: mongodb://root:k765g6hj@mongo:27017/?authSource=admin
+      XIAOJU_SURVEY_MONGO_URL: mongodb://root:k765g6hj@dbconn.sealoshzh.site:47633/?directConnection=true
       XIAOJU_SURVEY_MONGO_AUTH_SOURCE: admin
       XIAOJU_SURVEY_MONGO_DB_NAME: xiaojuSurvey
+      XIAOJU_SURVEY_REDIS_HOST: redis
+      XIAOJU_SURVEY_REDIS_PORT: 6379
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
       XIAOJU_SURVEY_JWT_SECRET: xiaojuSurveyJwtSecret
       XIAOJU_SURVEY_JWT_EXPIRES_IN: 8h
       ADMIN_USERNAME: admin
       ADMIN_PASSWORD: emojump.888
       NODE_ENV: production
     depends_on:
-      - mongo
+      - redis
     networks:
       - app-network
 
 volumes:
-  mongo-data:
+  redis-data:
 
 networks:
   app-network:
