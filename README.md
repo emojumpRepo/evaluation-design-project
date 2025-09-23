@@ -44,13 +44,13 @@ environment:
 
 ```bash
 # 构建镜像并启动
-docker-compose up -d --build
+docker compose up -d --build
 
 # 查看服务状态
-docker-compose ps
+docker compose ps
 
 # 查看日志
-docker-compose logs -f
+docker compose logs -f
 ```
 
 #### 4. 访问服务
