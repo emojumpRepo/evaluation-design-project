@@ -22,6 +22,7 @@
           :isFinallyPage="isFinallyPage"
           :renderData="renderData"
           :canGoPrev="canGoPrev"
+          :loading="isSubmitting"
           @submit="handleSubmit"
           @prev="handlePrev"
         ></SubmitButton>
@@ -76,6 +77,7 @@ const LogoIcon = communalLoader.loadComponent('LogoIcon')
 
 const mainRef = ref<any>()
 const boxRef = ref<HTMLElement>()
+const isSubmitting = ref<boolean>(false)
 
 const alert = useCommandComponent(AlertDialog)
 const confirm = useCommandComponent(ConfirmDialog)
@@ -212,6 +214,7 @@ const submitSurvey = async () => {
     return
   }
   try {
+    isSubmitting.value = true
     const params = normalizationRequestBody()
     const res: any = await submitForm(params)
     if (res.code === 200) {
@@ -318,6 +321,8 @@ const submitSurvey = async () => {
       title: error.message || '提交失败，请稍后重试'
     })
     console.log(error)
+  } finally {
+    isSubmitting.value = false
   }
 }
 
@@ -333,7 +338,7 @@ const handleSubmit = () => {
       title: again_text,
       onConfirm: async () => {
         try {
-          submitSurvey()
+          await submitSurvey()
         } catch (error) {
           console.log(error)
         } finally {
@@ -342,7 +347,9 @@ const handleSubmit = () => {
       }
     })
   } else {
-    submitSurvey()
+    if (!isSubmitting.value) {
+      submitSurvey()
+    }
   }
 }
 </script>
