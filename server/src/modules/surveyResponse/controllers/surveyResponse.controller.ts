@@ -694,6 +694,7 @@ export class SurveyResponseController {
       originalUserId,
       originalQuestionId,
       originalAssessmentId,
+      originalTenantId,
       clientTime,
     });
 

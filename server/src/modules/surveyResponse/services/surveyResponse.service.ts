@@ -109,6 +109,8 @@ export class SurveyResponseService {
       'EVALUATION_ADMIN_SYSTEM_URL',
     );
 
+    console.log('tenantId', tenantId);
+
     // 如果配置缺失，跳过发送，不抛出错误
     if (!baseUrl || !tenantId) {
       console.log('管理后台配置缺失，跳过发送问卷结果');
