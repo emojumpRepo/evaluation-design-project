@@ -1,11 +1,14 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { MessageModule } from '../message/message.module';
 import { SurveyModule } from '../survey/survey.module';
+import { BullModule } from '@nestjs/bull';
 
 import { ResponseSchemaService } from './services/responseScheme.service';
 import { SurveyResponseService } from './services/surveyResponse.service';
 import { CounterService } from './services/counter.service';
 import { ClientEncryptService } from './services/clientEncrypt.service';
+import { CallbackQueueService } from './services/callbackQueue.service';
+import { CallbackProcessor } from './services/callbackProcessor.service';
 
 import { ResponseSchema } from 'src/models/responseSchema.entity';
 import { Counter } from 'src/models/counter.entity';
@@ -40,6 +43,15 @@ import { AppManagerService } from '../appManager/services/appManager.service';
     // RedisModule,
     AuthModule,
     WorkspaceModule,
+    BullModule.registerQueue({
+      name: 'callback',
+      redis: {
+        host: process.env.REDIS_HOST || 'localhost',
+        port: parseInt(process.env.REDIS_PORT || '6379'),
+        password: process.env.REDIS_PASSWORD || undefined,
+        db: parseInt(process.env.REDIS_DB || '0'),
+      },
+    }),
   ],
   controllers: [
     ClientEncryptController,
@@ -53,6 +65,8 @@ import { AppManagerService } from '../appManager/services/appManager.service';
     SurveyResponseService,
     CounterService,
     ClientEncryptService,
+    CallbackQueueService,
+    CallbackProcessor,
     LoggerProvider,
     AppManagerService,
     OpenAuthGuard,
