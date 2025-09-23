@@ -73,31 +73,44 @@ export class SurveyResponseService {
     allAnswers,
     assessmentId,
     questionId,
+    tenantId,
   }: {
     userId: string;
     allAnswers: string;
     assessmentId: string;
     questionId: string;
+    tenantId: string;
   }) {
     // 检查参数是否有效（排除字符串'undefined'和空值）
     const isValidParam = (param: any) => {
-      return param && 
-             param !== 'undefined' && 
-             param !== undefined && 
-             param !== null &&
-             param !== '';
+      return (
+        param &&
+        param !== 'undefined' &&
+        param !== undefined &&
+        param !== null &&
+        param !== ''
+      );
     };
 
     // 如果任何必需参数无效，不发送请求
-    if (!isValidParam(userId) || !isValidParam(assessmentId) || !isValidParam(questionId)) {
-      console.log(`跳过发送问卷结果，参数无效: userId=${userId}, assessmentId=${assessmentId}, questionId=${questionId}`);
+    if (
+      !isValidParam(userId) ||
+      !isValidParam(assessmentId) ||
+      !isValidParam(questionId)
+    ) {
+      console.log(
+        `跳过发送问卷结果，参数无效: userId=${userId}, assessmentId=${assessmentId}, questionId=${questionId}`,
+      );
       return;
     }
 
     // 检查必要的配置是否存在
-    const baseUrl = this.configService.get<string>('EVALUATION_ADMIN_SYSTEM_URL');
-    const tenantId = this.configService.get<string>('EVALUATION_ADMIN_TENANT_ID');
-    
+    const baseUrl = this.configService.get<string>(
+      'EVALUATION_ADMIN_SYSTEM_URL',
+    );
+
+    console.log('tenantId', tenantId);
+
     // 如果配置缺失，跳过发送，不抛出错误
     if (!baseUrl || !tenantId) {
       console.log('管理后台配置缺失，跳过发送问卷结果');
@@ -146,7 +159,7 @@ export class SurveyResponseService {
     try {
       await this.surveyResponseRepository.update(
         { _id: new ObjectId(responseId) } as any,
-        { 
+        {
           calculationResult,
           calculatedAt: new Date(),
         } as any,

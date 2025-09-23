@@ -100,8 +100,6 @@ import { WorkspaceService } from '../workspace/services/workspace.service';
     AIGenerateService,
     CalculateService,
   ],
-  exports: [
-    CalculateService,
-  ],
+  exports: [CalculateService],
 })
 export class SurveyModule {}
