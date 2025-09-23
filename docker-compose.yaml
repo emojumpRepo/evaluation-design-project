@@ -2,14 +2,14 @@ version: "3.6"
 services:
   # Redis缓存服务
   redis:
-    image: redis:7.0-alpine
+    image: redis:7.4-alpine
     ports:
       - "6379:6379"
     volumes:
       - redis-data:/data
     networks:
       - app-network
-    command: redis-server --appendonly yes
+    command: redis-server --appendonly yes --aof-use-rdb-preamble no
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
