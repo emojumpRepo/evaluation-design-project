@@ -91,7 +91,7 @@ export class SurveyResponseService {
         param !== ''
       );
     };
-
+    console.log('allAnswers:', allAnswers, userId, assessmentId, questionId, tenantId);
     // 如果任何必需参数无效，不发送请求
     if (
       !isValidParam(userId) ||
