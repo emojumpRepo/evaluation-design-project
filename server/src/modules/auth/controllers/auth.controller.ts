@@ -57,13 +57,17 @@ export class AuthController {
       );
     }
 
-    const isCorrect = await this.captchaService.checkCaptchaIsCorrect({
-      captcha: userInfo.captcha,
-      id: userInfo.captchaId,
-    });
+    // Skip captcha verification in development environment
+    const isDevelopment = this.configService.get<string>('NODE_ENV') === 'development';
+    if (!isDevelopment) {
+      const isCorrect = await this.captchaService.checkCaptchaIsCorrect({
+        captcha: userInfo.captcha,
+        id: userInfo.captchaId,
+      });
 
-    if (!isCorrect) {
-      throw new HttpException('验证码不正确', EXCEPTION_CODE.CAPTCHA_INCORRECT);
+      if (!isCorrect) {
+        throw new HttpException('验证码不正确', EXCEPTION_CODE.CAPTCHA_INCORRECT);
+      }
     }
 
     const user = await this.userService.createUser({
@@ -76,7 +80,9 @@ export class AuthController {
       _id: user._id.toString(),
     });
     // 验证过的验证码要删掉，防止被别人保存重复调用
-    this.captchaService.deleteCaptcha(userInfo.captchaId);
+    if (!isDevelopment && userInfo.captchaId) {
+      this.captchaService.deleteCaptcha(userInfo.captchaId);
+    }
     return {
       code: 200,
       data: {
@@ -97,13 +103,17 @@ export class AuthController {
       captcha: string;
     },
   ) {
-    const isCorrect = await this.captchaService.checkCaptchaIsCorrect({
-      captcha: userInfo.captcha,
-      id: userInfo.captchaId,
-    });
+    // Skip captcha verification in development environment
+    const isDevelopment = this.configService.get<string>('NODE_ENV') === 'development';
+    if (!isDevelopment) {
+      const isCorrect = await this.captchaService.checkCaptchaIsCorrect({
+        captcha: userInfo.captcha,
+        id: userInfo.captchaId,
+      });
 
-    if (!isCorrect) {
-      throw new HttpException('验证码不正确', EXCEPTION_CODE.CAPTCHA_INCORRECT);
+      if (!isCorrect) {
+        throw new HttpException('验证码不正确', EXCEPTION_CODE.CAPTCHA_INCORRECT);
+      }
     }
 
     const username = await this.userService.getUserByUsername(
@@ -133,7 +143,10 @@ export class AuthController {
         _id: user._id.toString(),
       });
       // 验证过的验证码要删掉，防止被别人保存重复调用
-      this.captchaService.deleteCaptcha(userInfo.captchaId);
+      const isDevelopmentEnv = this.configService.get<string>('NODE_ENV') === 'development';
+      if (!isDevelopmentEnv && userInfo.captchaId) {
+        this.captchaService.deleteCaptcha(userInfo.captchaId);
+      }
     } catch (error) {
       throw new Error(
         'generateToken erro:' +

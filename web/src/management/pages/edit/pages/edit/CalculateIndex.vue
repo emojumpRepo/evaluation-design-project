@@ -73,8 +73,13 @@
                 <template #dropdown>
                   <el-dropdown-menu>
                     <el-dropdown-item command="sds">SDS抑郁自评量表</el-dropdown-item>
-                    <el-dropdown-item command="scl90">症状自评量表（SCL-90）</el-dropdown-item>
-                    <el-dropdown-item command="bigfive">大五人格量表</el-dropdown-item>
+                    <el-dropdown-item command="sas">SAS焦虑自评量表</el-dropdown-item>
+                    <el-dropdown-item command="phq9">PHQ-9抑郁问卷</el-dropdown-item>
+                    <el-dropdown-item divided command="epq">EPQ埃森克人格问卷</el-dropdown-item>
+                    <el-dropdown-item command="bigfive">大五人格量表（BFI）</el-dropdown-item>
+                    <el-dropdown-item command="disc">DISC行为风格测评</el-dropdown-item>
+                    <el-dropdown-item divided command="psqi">PSQI睡眠质量指数</el-dropdown-item>
+                    <el-dropdown-item command="scl90">SCL-90症状自评量表</el-dropdown-item>
                     <el-dropdown-item divided command="general">通用计算模板</el-dropdown-item>
                   </el-dropdown-menu>
                 </template>
@@ -165,6 +170,7 @@ import { ElMessage } from 'element-plus'
 import { ArrowDown } from '@element-plus/icons-vue'
 import { useEditStore } from '@/management/stores/edit'
 import MonacoEditor from '@/management/components/MonacoEditor.vue'
+import { generateCodeFromTemplate, getAvailableTemplates } from '../../templates'
 
 const editStore = useEditStore()
 const { schema, changeSchema } = editStore
@@ -270,31 +276,70 @@ const generateCodeTemplate = () => {
 }
 
 // 处理模板选择
-const handleTemplateSelect = (command: string) => {
+const handleTemplateSelect = async (command: string) => {
   let template = ''
   let message = ''
   
-  switch (command) {
-    case 'sds':
-      template = generateDepressionScaleTemplate()
-      message = '已插入SDS抑郁自评量表计算模板'
-      break
-    case 'scl90':
-      ElMessage.info('SCL-90症状自评量表模板开发中，请稍后...')
-      return
-    case 'bigfive':
-      ElMessage.info('大五人格量表模板开发中，请稍后...')
-      return
-    case 'general':
+  // 使用新的模板系统
+  // 已移除对scl90、psqi、disc的特殊处理，因为它们现在已经实现
+  
+  try {
+    // 从模板系统动态加载代码
+    console.log('尝试加载模板:', command)
+    template = await generateCodeFromTemplate(command, questionList.value)
+    console.log('模板加载结果:', template ? '成功' : '失败')
+  } catch (error) {
+    console.error('模板加载错误:', error)
+    ElMessage.error(`模板加载失败: ${error.message}`)
+    return
+  }
+  
+  if (!template) {
+    // 如果模板系统没有返回代码，使用旧的生成方式作为后备
+    if (command === 'general') {
       if (questionList.value.length === 0) {
         ElMessage.warning('请先在内容设置中添加题目')
         return
       }
       template = generateCodeTemplate()
       message = '已插入通用计算模板'
-      break
-    default:
+    } else {
+      ElMessage.error('模板加载失败')
       return
+    }
+  } else {
+    // 根据不同模板设置消息
+    switch (command) {
+      case 'sds':
+        message = '已插入SDS抑郁自评量表计算模板'
+        break
+      case 'sas':
+        message = '已插入SAS焦虑自评量表计算模板'
+        break
+      case 'phq9':
+        message = '已插入PHQ-9抑郁问卷计算模板'
+        break
+      case 'epq':
+        message = '已插入EPQ埃森克人格问卷计算模板'
+        break
+      case 'bigfive':
+        message = '已插入大五人格量表（BFI）计算模板'
+        break
+      case 'disc':
+        message = '已插入DISC行为风格测评计算模板'
+        break
+      case 'psqi':
+        message = '已插入PSQI睡眠质量指数计算模板'
+        break
+      case 'scl90':
+        message = '已插入SCL-90症状自评量表计算模板'
+        break
+      case 'general':
+        message = '已插入通用计算模板'
+        break
+      default:
+        message = '已插入计算模板'
+    }
   }
   
   if (template) {

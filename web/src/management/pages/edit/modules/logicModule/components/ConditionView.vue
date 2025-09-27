@@ -43,12 +43,22 @@
     </el-form-item>
     <span class="desc">中的任一选项 </span>
     <span class="opt">
-      <i-ep-plus class="opt-icon opt-icon-plus" @click="handleAdd" />
-      <i-ep-minus
-        class="opt-icon"
+      <el-button 
+        type="primary" 
+        :icon="Plus" 
+        circle
+        size="small"
+        @click="handleAdd"
+        title="添加条件"
+      />
+      <el-button 
+        type="danger" 
+        :icon="Minus"
+        circle
+        size="small"
         v-if="index > 0"
-        :size="14"
         @click="() => handleDelete(conditionNode.id)"
+        title="删除条件"
       />
     </span>
   </div>
@@ -58,6 +68,7 @@ import { computed, inject, ref, type ComputedRef } from 'vue'
 import { ConditionNode, RuleNode } from '@/common/logicEngine/RuleBuild'
 import { CHOICES } from '@/common/typeEnum'
 import { cleanRichTextWithMediaTag } from '@/common/xss'
+import { Plus, Minus } from '@element-plus/icons-vue'
 const renderData = inject<ComputedRef<Array<any>>>('renderData') || ref([])
 const props = defineProps({
   index: {
@@ -196,13 +207,37 @@ const handleDelete = (id: any) => {
   .opt {
     display: flex;
     align-items: center;
-    .opt-icon {
-      cursor: pointer;
-      font-size: 12px;
-    }
-
-    .opt-icon-plus {
-      margin-right: 10px;
+    gap: 8px;
+    margin-left: 12px;
+    
+    .el-button {
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      
+      &:hover {
+        transform: scale(1.1);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+      }
+      
+      &.el-button--primary {
+        background-color: #409eff;
+        border-color: #409eff;
+        
+        &:hover {
+          background-color: #66b1ff;
+          border-color: #66b1ff;
+        }
+      }
+      
+      &.el-button--danger {
+        background-color: #f56c6c;
+        border-color: #f56c6c;
+        
+        &:hover {
+          background-color: #f78989;
+          border-color: #f78989;
+        }
+      }
     }
   }
   .el-form-item {

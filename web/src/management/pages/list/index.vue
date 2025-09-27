@@ -22,7 +22,6 @@
               class="btn create-btn"
               type="default"
               @click="onGroupCreate"
-              v-if="menuType === MenuType.PersonalGroup && !groupId"
             >
               <i class="iconfont icon-chuangjian"></i>
               <span>创建分组</span>

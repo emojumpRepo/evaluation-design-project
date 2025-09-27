@@ -66,7 +66,7 @@
             </div>
           </el-form-item>
 
-          <el-form-item prop="captcha">
+          <el-form-item prop="captcha" v-if="!isDevelopment">
             <div class="captcha-wrapper">
               <el-input v-model="formData.captcha" size="large" placeholder="验证码" prefix-icon="Shield" />
               <div class="captcha-img" @click="refreshCaptcha" v-html="captchaImgData"></div>
@@ -182,6 +182,8 @@ const passwordStrengthHandle = async (value: string) => {
   }
 }
 
+const isDevelopment = import.meta.env.DEV
+
 const rules = {
   name: [
     { required: true, message: '请输入账号', trigger: 'blur' },
@@ -193,7 +195,7 @@ const rules = {
     }
   ],
   password: [{ required: true, validator: debounce(passwordValidator, 500), trigger: 'change' }],
-  captcha: [
+  captcha: isDevelopment ? [] : [
     {
       required: true,
       message: '请输入验证码',
@@ -203,7 +205,9 @@ const rules = {
 }
 
 onMounted(() => {
-  refreshCaptcha()
+  if (!isDevelopment) {
+    refreshCaptcha()
+  }
 })
 
 const pending = reactive<Pending>({
@@ -227,8 +231,8 @@ const submitForm = (type: 'login' | 'register') => {
         const res: any = await submitTypes[type]({
           username: formData.name,
           password: formData.password,
-          captcha: formData.captcha,
-          captchaId: formData.captchaId
+          captcha: isDevelopment ? '' : formData.captcha,
+          captchaId: isDevelopment ? '' : formData.captchaId
         })
 
         if (res.code !== CODE_MAP.SUCCESS) {

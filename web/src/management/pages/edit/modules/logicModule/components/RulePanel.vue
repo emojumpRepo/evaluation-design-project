@@ -13,8 +13,8 @@
       <img src="/imgs/icons/unselected.webp" />
     </div>
 
-    <el-button type="primary" plain class="add" @click="handleAdd">
-      <i-ep-plus class="plus-icon" /> 新增显示逻辑
+    <el-button type="primary" class="add" @click="handleAdd" :icon="Plus" size="default">
+      新增显示逻辑
     </el-button>
   </div>
 </template>
@@ -23,6 +23,7 @@ import { shallowRef, computed } from 'vue'
 import { RuleNode, ConditionNode } from '@/common/logicEngine/RuleBuild'
 import { useEditStore } from '@/management/stores/edit'
 import { storeToRefs } from 'pinia'
+import { Plus } from '@element-plus/icons-vue'
 const editStore = useEditStore()
 const { showLogicEngine } = storeToRefs(editStore)
 
@@ -68,9 +69,18 @@ defineExpose({
   .add {
     margin: 12px 0;
     width: 100%;
-
-    .plus-icon {
-      margin-right: 5px;
+    font-weight: 500;
+    height: 40px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(64, 158, 255, 0.3);
+    }
+    
+    &:active {
+      transform: translateY(0);
     }
   }
 }
