@@ -1,10 +1,23 @@
 version: "3.6"
 services:
-  # Redis缓存服务
+  mongo:
+    image: mongo:4
+    container_name: xiaoju-survey-mongo
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+    ports:
+      - "${MONGO_PORT:-27017}:27017"
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - app-network
+
   redis:
     image: redis:7.4-alpine
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis-data:/data
     networks:
@@ -22,11 +35,11 @@ services:
     build: .
     restart: always
     ports:
-      - "8080:8080" # API端口
+      - "${APP_PORT:-8080}:8080"
     environment:
-      XIAOJU_SURVEY_MONGO_URL: mongodb://root:k765g6hj@dbconn.sealoshzh.site:47633/?directConnection=true # 外部 MongoDB 连接
-      XIAOJU_SURVEY_MONGO_AUTH_SOURCE: admin # MongoDB 认证数据库
-      # Redis配置
+      XIAOJU_SURVEY_MONGO_URL: mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongo:${MONGO_PORT:-27017}
+      XIAOJU_SURVEY_MONGO_AUTH_SOURCE: ${XIAOJU_SURVEY_MONGO_AUTH_SOURCE}
+      XIAOJU_SURVEY_MONGO_DB_NAME: ${XIAOJU_SURVEY_MONGO_DB_NAME}
       XIAOJU_SURVEY_REDIS_HOST: redis
       XIAOJU_SURVEY_REDIS_PORT: 6379
       REDIS_HOST: redis
@@ -35,12 +48,16 @@ services:
       AImodel_API_KEY: ${AImodel_API_KEY}
       AImodel_MODEL: ${AImodel_MODEL}
     depends_on:
+      mongo:
+        condition: service_started
       redis:
         condition: service_healthy
     networks:
       - app-network
 
 volumes:
+  mongo-data:
+    driver: local
   redis-data:
     driver: local
 
