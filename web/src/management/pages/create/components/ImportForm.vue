@@ -160,14 +160,14 @@ const submit = () => {
     try {
       const formData = new FormData()
       formData.append('files', selectedFile.value!)
-      formData.append('title', form.title)
-      formData.append('remark', form.remark)
-      formData.append('surveyCode', form.surveyCode)
+      formData.append('title', form.value.title)
+      formData.append('remark', form.value.remark)
+      formData.append('surveyCode', form.value.surveyCode)
       if (workSpaceId.value) {
         formData.append('workspaceId', workSpaceId.value)
       }
-      if (form.groupId && form.groupId !== GroupState.All && form.groupId !== GroupState.Not) {
-        formData.append('groupId', form.groupId)
+      if (form.value.groupId && form.value.groupId !== GroupState.All && form.value.groupId !== GroupState.Not) {
+        formData.append('groupId', form.value.groupId)
       }
       
       const res: any = await createSurveyFromExcel(formData)
