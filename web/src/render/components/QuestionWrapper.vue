@@ -23,7 +23,7 @@ import { useOptionsQuota } from '@/render/hooks/useOptionsQuota'
 import { useQuestionStore } from '@/render/stores/question'
 import { useSurveyStore } from '@/render/stores/survey'
 
-import { setSurveyData, setSurveySubmit } from '@/render/utils/storage'
+import { getSurveyData, setSurveyData, setSurveySubmit } from '@/render/utils/storage'
 
 const props = defineProps({
   indexNumber: {
@@ -164,6 +164,24 @@ watch(
   (newVal, oldVal) => {
     const { field, type, innerType } = props.moduleConfig
     if (!newVal && oldVal) {
+      // 仅当本题与“上次变更题”存在逻辑关联时才执行清空
+      let isRelated = false
+      try {
+        const lastChanged = changeField.value
+        if (lastChanged) {
+          const jumpTargets = surveyStore.jumpLogicEngine
+            ? surveyStore.jumpLogicEngine.getResultsByField(lastChanged, surveyStore.formValues)
+            : []
+          const showTargets = surveyStore.showLogicEngine && surveyStore.showLogicEngine.getResultsByField
+            ? surveyStore.showLogicEngine.getResultsByField(lastChanged, surveyStore.formValues)
+            : []
+          const relatedTargets = [...jumpTargets, ...showTargets].map((it) => it && it.target)
+          isRelated = relatedTargets.includes(field)
+        }
+      } catch (e) {
+        // ignore
+      }
+      if (!isRelated) return
       // 如果被隐藏题目有选中值，则需要清空选中值
       if (formValues.value[field].toString()) {
         let value = ''
@@ -177,6 +195,31 @@ watch(
           value: value
         }
         surveyStore.changeData(data)
+
+        // 同步清理该题目的扩展输入（如 others/评分后输入），约定为 `${field}_*` 的键
+        try {
+          const prefix = `${field}_`
+          const keys = Object.keys(formValues.value || {}).filter((k) => k.startsWith(prefix))
+          keys.forEach((k) => {
+            surveyStore.changeData({ key: k, value: '' })
+          })
+        } catch (e) {
+          // ignore
+        }
+
+        // 持久化清空后的数据到本地存储：仅覆盖被隐藏题及其扩展键对应的缓存
+        try {
+          const surveyId = surveyStore.surveyPath
+          const userId = surveyStore.userId
+          const saved = getSurveyData(surveyId, userId) || {}
+          const prefix = `${field}_`
+          const clearedKeys = Object.keys(formValues.value || {}).filter((k) => k.startsWith(prefix))
+          saved[field] = value
+          clearedKeys.forEach((k) => { saved[k] = '' })
+          setSurveyData(surveyId, saved, userId)
+        } catch (e) {
+          // ignore
+        }
 
         processJumpSkip()
       }
