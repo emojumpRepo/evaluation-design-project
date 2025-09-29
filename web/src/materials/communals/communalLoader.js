@@ -5,7 +5,7 @@ export class CommunalLoader {
     return defineAsyncComponent({
       loader: () => import(`./widgets/${path}/index.jsx`),
       delay: 200,
-      timeout: 3000
+      timeout: 30000
     })
   }
 }

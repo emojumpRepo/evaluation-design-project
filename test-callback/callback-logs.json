@@ -5803,5 +5803,575 @@
       "createdAt": 1758188474805,
       "updatedAt": 1758188474805
     }
+  },
+  {
+    "id": 14,
+    "timestamp": "2025-09-23T14:06:39.200Z",
+    "method": "POST",
+    "url": "/callback",
+    "headers": {
+      "host": "localhost:3333",
+      "user-agent": "axios/1.12.2",
+      "content-length": "738",
+      "accept": "application/json, text/plain, */*",
+      "accept-encoding": "gzip, compress, deflate, br",
+      "content-type": "application/json"
+    },
+    "query": {},
+    "body": {
+      "eventId": "evt_202509234298",
+      "questionnaireName": "问卷调研",
+      "questionnaireId": "fgtJMzfI",
+      "questionnaireType": "GENERAL",
+      "user": {
+        "userId": "anonymous"
+      },
+      "result": {
+        "status": "completed",
+        "rawScore": 0,
+        "standardScore": 0,
+        "level": "未评级",
+        "interpretation": "",
+        "recommendations": [],
+        "dimensions": [],
+        "questions": [
+          {
+            "questionId": "data458",
+            "questionText": "标题1",
+            "questionType": "other",
+            "options": [],
+            "userAnswer": "123123",
+            "answerScore": 0
+          },
+          {
+            "questionId": "data515",
+            "questionText": "标题2",
+            "questionType": "single_choice",
+            "options": [
+              {
+                "optionId": "A",
+                "optionText": "选项1",
+                "score": 0
+              },
+              {
+                "optionId": "B",
+                "optionText": "选项2",
+                "score": 0
+              }
+            ],
+            "userAnswer": "A",
+            "answerScore": 0
+          }
+        ]
+      },
+      "completedAt": 1758636399164,
+      "createdAt": 1758636399164,
+      "updatedAt": 1758636399164
+    }
+  },
+  {
+    "id": 15,
+    "timestamp": "2025-09-23T14:06:40.218Z",
+    "method": "GET",
+    "url": "/callback",
+    "headers": {
+      "host": "localhost:3333",
+      "connection": "keep-alive",
+      "sec-ch-ua": "\"Chromium\";v=\"140\", \"Not=A?Brand\";v=\"24\", \"Microsoft Edge\";v=\"140\"",
+      "sec-ch-ua-mobile": "?0",
+      "sec-ch-ua-platform": "\"Windows\"",
+      "upgrade-insecure-requests": "1",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36 Edg/140.0.0.0",
+      "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+      "sec-fetch-site": "same-site",
+      "sec-fetch-mode": "navigate",
+      "sec-fetch-user": "?1",
+      "sec-fetch-dest": "document",
+      "referer": "http://localhost:8080/",
+      "accept-encoding": "gzip, deflate, br, zstd",
+      "accept-language": "zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6",
+      "cookie": "username=admin; rememberMe=true; password=bPwD5rz+GMo0uWtcNRAwhb07M4FkhQKE/tNHf0A4AjMU+tBkP9ObLplyuPGt9gcPWiRFpjKoC+ch3vEt2JKkvw=="
+    },
+    "query": {},
+    "body": null
+  },
+  {
+    "id": 16,
+    "timestamp": "2025-09-23T14:08:19.739Z",
+    "method": "POST",
+    "url": "/callback",
+    "headers": {
+      "host": "localhost:3333",
+      "user-agent": "axios/1.12.2",
+      "content-length": "737",
+      "accept": "application/json, text/plain, */*",
+      "accept-encoding": "gzip, compress, deflate, br",
+      "content-type": "application/json"
+    },
+    "query": {},
+    "body": {
+      "eventId": "evt_202509237623",
+      "questionnaireName": "问卷调研",
+      "questionnaireId": "fgtJMzfI",
+      "questionnaireType": "GENERAL",
+      "user": {
+        "userId": "Tvww2yFb"
+      },
+      "result": {
+        "status": "completed",
+        "rawScore": 0,
+        "standardScore": 0,
+        "level": "未评级",
+        "interpretation": "",
+        "recommendations": [],
+        "dimensions": [],
+        "questions": [
+          {
+            "questionId": "data458",
+            "questionText": "标题1",
+            "questionType": "other",
+            "options": [],
+            "userAnswer": "123123",
+            "answerScore": 0
+          },
+          {
+            "questionId": "data515",
+            "questionText": "标题2",
+            "questionType": "single_choice",
+            "options": [
+              {
+                "optionId": "A",
+                "optionText": "选项1",
+                "score": 0
+              },
+              {
+                "optionId": "B",
+                "optionText": "选项2",
+                "score": 0
+              }
+            ],
+            "userAnswer": "A",
+            "answerScore": 0
+          }
+        ]
+      },
+      "completedAt": 1758636499728,
+      "createdAt": 1758636499728,
+      "updatedAt": 1758636499728
+    }
+  },
+  {
+    "id": 17,
+    "timestamp": "2025-09-23T14:08:20.779Z",
+    "method": "GET",
+    "url": "/callback",
+    "headers": {
+      "host": "localhost:3333",
+      "connection": "keep-alive",
+      "sec-ch-ua": "\"Chromium\";v=\"140\", \"Not=A?Brand\";v=\"24\", \"Microsoft Edge\";v=\"140\"",
+      "sec-ch-ua-mobile": "?0",
+      "sec-ch-ua-platform": "\"Windows\"",
+      "upgrade-insecure-requests": "1",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36 Edg/140.0.0.0",
+      "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+      "sec-fetch-site": "same-site",
+      "sec-fetch-mode": "navigate",
+      "sec-fetch-user": "?1",
+      "sec-fetch-dest": "document",
+      "referer": "http://localhost:8080/",
+      "accept-encoding": "gzip, deflate, br, zstd",
+      "accept-language": "zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6",
+      "cookie": "username=admin; rememberMe=true; password=bPwD5rz+GMo0uWtcNRAwhb07M4FkhQKE/tNHf0A4AjMU+tBkP9ObLplyuPGt9gcPWiRFpjKoC+ch3vEt2JKkvw==",
+      "if-none-match": "W/\"62-mqcC9I/bKhf1aNlVH8kJKYQHD40\""
+    },
+    "query": {},
+    "body": null
+  },
+  {
+    "id": 18,
+    "timestamp": "2025-09-23T14:13:56.972Z",
+    "method": "POST",
+    "url": "/callback",
+    "headers": {
+      "host": "localhost:3333",
+      "user-agent": "axios/1.12.2",
+      "content-length": "733",
+      "accept": "application/json, text/plain, */*",
+      "accept-encoding": "gzip, compress, deflate, br",
+      "content-type": "application/json"
+    },
+    "query": {},
+    "body": {
+      "eventId": "evt_202509231913",
+      "questionnaireName": "问卷调研",
+      "questionnaireId": "fgtJMzfI",
+      "questionnaireType": "GENERAL",
+      "user": {
+        "userId": "Tvww2yFb"
+      },
+      "result": {
+        "status": "completed",
+        "rawScore": 0,
+        "standardScore": 0,
+        "level": "未评级",
+        "interpretation": "",
+        "recommendations": [],
+        "dimensions": [],
+        "questions": [
+          {
+            "questionId": "data458",
+            "questionText": "标题1",
+            "questionType": "other",
+            "options": [],
+            "userAnswer": "22",
+            "answerScore": 0
+          },
+          {
+            "questionId": "data515",
+            "questionText": "标题2",
+            "questionType": "single_choice",
+            "options": [
+              {
+                "optionId": "A",
+                "optionText": "选项1",
+                "score": 0
+              },
+              {
+                "optionId": "B",
+                "optionText": "选项2",
+                "score": 0
+              }
+            ],
+            "userAnswer": "A",
+            "answerScore": 0
+          }
+        ]
+      },
+      "completedAt": 1758636836965,
+      "createdAt": 1758636836965,
+      "updatedAt": 1758636836965
+    }
+  },
+  {
+    "id": 19,
+    "timestamp": "2025-09-23T14:35:20.468Z",
+    "method": "POST",
+    "url": "/callback",
+    "headers": {
+      "host": "localhost:3333",
+      "user-agent": "axios/1.12.2",
+      "content-length": "737",
+      "accept": "application/json, text/plain, */*",
+      "accept-encoding": "gzip, compress, deflate, br",
+      "content-type": "application/json"
+    },
+    "query": {},
+    "body": {
+      "eventId": "evt_202509238761",
+      "questionnaireName": "问卷调研",
+      "questionnaireId": "fgtJMzfI",
+      "questionnaireType": "GENERAL",
+      "user": {
+        "userId": "Tvww2yFb"
+      },
+      "result": {
+        "status": "completed",
+        "rawScore": 0,
+        "standardScore": 0,
+        "level": "未评级",
+        "interpretation": "",
+        "recommendations": [],
+        "dimensions": [],
+        "questions": [
+          {
+            "questionId": "data458",
+            "questionText": "标题1",
+            "questionType": "other",
+            "options": [],
+            "userAnswer": "123123",
+            "answerScore": 0
+          },
+          {
+            "questionId": "data515",
+            "questionText": "标题2",
+            "questionType": "single_choice",
+            "options": [
+              {
+                "optionId": "A",
+                "optionText": "选项1",
+                "score": 0
+              },
+              {
+                "optionId": "B",
+                "optionText": "选项2",
+                "score": 0
+              }
+            ],
+            "userAnswer": "A",
+            "answerScore": 0
+          }
+        ]
+      },
+      "completedAt": 1758638120412,
+      "createdAt": 1758638120412,
+      "updatedAt": 1758638120412
+    },
+    "attemptCount": 1,
+    "responseStatus": 200,
+    "responseBody": {
+      "code": 400,
+      "success": false,
+      "message": "响应格式不符合预期（模拟第一次失败）"
+    }
+  },
+  {
+    "id": 20,
+    "timestamp": "2025-09-23T14:36:14.214Z",
+    "method": "POST",
+    "url": "/callback",
+    "headers": {
+      "host": "localhost:3333",
+      "user-agent": "axios/1.12.2",
+      "content-length": "737",
+      "accept": "application/json, text/plain, */*",
+      "accept-encoding": "gzip, compress, deflate, br",
+      "content-type": "application/json"
+    },
+    "query": {},
+    "body": {
+      "eventId": "evt_202509233164",
+      "questionnaireName": "问卷调研",
+      "questionnaireId": "fgtJMzfI",
+      "questionnaireType": "GENERAL",
+      "user": {
+        "userId": "Tvww2yFb"
+      },
+      "result": {
+        "status": "completed",
+        "rawScore": 0,
+        "standardScore": 0,
+        "level": "未评级",
+        "interpretation": "",
+        "recommendations": [],
+        "dimensions": [],
+        "questions": [
+          {
+            "questionId": "data458",
+            "questionText": "标题1",
+            "questionType": "other",
+            "options": [],
+            "userAnswer": "123123",
+            "answerScore": 0
+          },
+          {
+            "questionId": "data515",
+            "questionText": "标题2",
+            "questionType": "single_choice",
+            "options": [
+              {
+                "optionId": "A",
+                "optionText": "选项1",
+                "score": 0
+              },
+              {
+                "optionId": "B",
+                "optionText": "选项2",
+                "score": 0
+              }
+            ],
+            "userAnswer": "A",
+            "answerScore": 0
+          }
+        ]
+      },
+      "completedAt": 1758638174182,
+      "createdAt": 1758638174182,
+      "updatedAt": 1758638174182
+    },
+    "attemptCount": 1,
+    "responseStatus": 500,
+    "responseBody": {
+      "code": 500,
+      "success": false,
+      "error": "Internal Server Error",
+      "message": "服务器内部错误（模拟第一次失败）"
+    }
+  },
+  {
+    "id": 21,
+    "timestamp": "2025-09-23T14:36:16.252Z",
+    "method": "POST",
+    "url": "/callback",
+    "headers": {
+      "host": "localhost:3333",
+      "user-agent": "axios/1.12.2",
+      "content-length": "737",
+      "accept": "application/json, text/plain, */*",
+      "accept-encoding": "gzip, compress, deflate, br",
+      "content-type": "application/json"
+    },
+    "query": {},
+    "body": {
+      "eventId": "evt_202509233164",
+      "questionnaireName": "问卷调研",
+      "questionnaireId": "fgtJMzfI",
+      "questionnaireType": "GENERAL",
+      "user": {
+        "userId": "Tvww2yFb"
+      },
+      "result": {
+        "status": "completed",
+        "rawScore": 0,
+        "standardScore": 0,
+        "level": "未评级",
+        "interpretation": "",
+        "recommendations": [],
+        "dimensions": [],
+        "questions": [
+          {
+            "questionId": "data458",
+            "questionText": "标题1",
+            "questionType": "other",
+            "options": [],
+            "userAnswer": "123123",
+            "answerScore": 0
+          },
+          {
+            "questionId": "data515",
+            "questionText": "标题2",
+            "questionType": "single_choice",
+            "options": [
+              {
+                "optionId": "A",
+                "optionText": "选项1",
+                "score": 0
+              },
+              {
+                "optionId": "B",
+                "optionText": "选项2",
+                "score": 0
+              }
+            ],
+            "userAnswer": "A",
+            "answerScore": 0
+          }
+        ]
+      },
+      "completedAt": 1758638174182,
+      "createdAt": 1758638174182,
+      "updatedAt": 1758638174182
+    },
+    "attemptCount": 2,
+    "responseStatus": 502,
+    "responseBody": {
+      "code": 502,
+      "success": false,
+      "error": "Bad Gateway",
+      "message": "网关错误（模拟第二次失败）"
+    }
+  },
+  {
+    "id": 22,
+    "timestamp": "2025-09-23T14:36:20.267Z",
+    "method": "POST",
+    "url": "/callback",
+    "headers": {
+      "host": "localhost:3333",
+      "user-agent": "axios/1.12.2",
+      "content-length": "737",
+      "accept": "application/json, text/plain, */*",
+      "accept-encoding": "gzip, compress, deflate, br",
+      "content-type": "application/json"
+    },
+    "query": {},
+    "body": {
+      "eventId": "evt_202509233164",
+      "questionnaireName": "问卷调研",
+      "questionnaireId": "fgtJMzfI",
+      "questionnaireType": "GENERAL",
+      "user": {
+        "userId": "Tvww2yFb"
+      },
+      "result": {
+        "status": "completed",
+        "rawScore": 0,
+        "standardScore": 0,
+        "level": "未评级",
+        "interpretation": "",
+        "recommendations": [],
+        "dimensions": [],
+        "questions": [
+          {
+            "questionId": "data458",
+            "questionText": "标题1",
+            "questionType": "other",
+            "options": [],
+            "userAnswer": "123123",
+            "answerScore": 0
+          },
+          {
+            "questionId": "data515",
+            "questionText": "标题2",
+            "questionType": "single_choice",
+            "options": [
+              {
+                "optionId": "A",
+                "optionText": "选项1",
+                "score": 0
+              },
+              {
+                "optionId": "B",
+                "optionText": "选项2",
+                "score": 0
+              }
+            ],
+            "userAnswer": "A",
+            "answerScore": 0
+          }
+        ]
+      },
+      "completedAt": 1758638174182,
+      "createdAt": 1758638174182,
+      "updatedAt": 1758638174182
+    },
+    "attemptCount": 3,
+    "responseStatus": 200,
+    "responseBody": {
+      "code": 200,
+      "success": true,
+      "message": "回调接收成功（第3次尝试）",
+      "receivedAt": "2025-09-23T14:36:20.266Z",
+      "attemptCount": 3
+    }
+  },
+  {
+    "id": 23,
+    "timestamp": "2025-09-23T15:48:57.390Z",
+    "method": "POST",
+    "url": "/psychology/assessment-participant/submit",
+    "headers": {
+      "accept": "application/json, */*",
+      "content-type": "application/json",
+      "tenant-id": "1",
+      "content-length": "224",
+      "user-agent": "node-fetch/1.0 (+https://github.com/bitinn/node-fetch)",
+      "accept-encoding": "gzip,deflate",
+      "host": "localhost:3333",
+      "connection": "keep-alive"
+    },
+    "query": {},
+    "body": {
+      "userId": 157,
+      "answers": "[{\"title\":\"标题1\",\"answer\":\"22\",\"index\":1,\"score\":0},{\"title\":\"标题2\",\"answer\":\"选项2\",\"index\":2,\"score\":0}]",
+      "taskNo": "TASK_20250923164050_749012",
+      "questionnaireId": 19
+    },
+    "attemptCount": 1,
+    "responseStatus": 200,
+    "responseBody": {
+      "code": 0,
+      "msg": "提交成功",
+      "success": true
+    }
   }
 ]
