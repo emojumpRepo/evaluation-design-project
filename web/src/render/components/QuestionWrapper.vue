@@ -111,6 +111,7 @@ const handleChange = (data) => {
   }
 
   processJumpSkip()
+  processShowLogicClear()
 
   // 默认开启断点续答：记录内容
   const formData = updateFormData(data.value)
@@ -157,6 +158,33 @@ const logicSkip = computed(() => {
 const visibility = computed(() => {
   return logicShow.value && !logicSkip.value
 })
+
+// 清空指定题目的答案（含扩展键）并精确更新本地存储
+const clearAnswerForField = (targetField) => {
+  try {
+    const q = questionStore.questionData?.[targetField] || {}
+    const qType = q?.type
+    let emptyVal = ''
+    if (qType === QUESTION_TYPE.CHECKBOX) {
+      emptyVal = []
+    }
+
+    surveyStore.changeData({ key: targetField, value: emptyVal })
+
+    const prefix = `${targetField}_`
+    const extKeys = Object.keys(formValues.value || {}).filter((k) => k.startsWith(prefix))
+    extKeys.forEach((k) => surveyStore.changeData({ key: k, value: '' }))
+
+    const surveyId = surveyStore.surveyPath
+    const userId = surveyStore.userId
+    const saved = getSurveyData(surveyId, userId) || {}
+    saved[targetField] = emptyVal
+    extKeys.forEach((k) => { saved[k] = '' })
+    setSurveyData(surveyId, saved, userId)
+  } catch (e) {
+    // ignore
+  }
+}
 
 // 当题目被隐藏时，清空题目的选中项，实现a显示关联b，b显示关联c场景下，b隐藏不影响题目c的展示
 watch(
@@ -267,6 +295,29 @@ const processJumpSkip = () => {
     .slice(changeIndex.value + 1, maxIndexQuestion)
     .map((item) => item.field)
   questionStore.addNeedHideFields(skipKey)
+
+  // 清空所有被跳转隐藏的题目答案
+  skipKey.forEach((f) => clearAnswerForField(f))
+}
+
+// 根据显示逻辑清空被隐藏的目标题答案
+const processShowLogicClear = () => {
+  try {
+    const lastChanged = changeField.value
+    if (!lastChanged) return
+    const showTargets = surveyStore.showLogicEngine && surveyStore.showLogicEngine.getResultsByField
+      ? surveyStore.showLogicEngine.getResultsByField(lastChanged, surveyStore.formValues)
+      : []
+    showTargets
+      .filter((t) => t && t.target && t.result === false)
+      .forEach((t) => {
+        if (questionStore.questionData?.[t.target]) {
+          clearAnswerForField(t.target)
+        }
+      })
+  } catch (e) {
+    // ignore
+  }
 }
 /** 问卷逻辑处理 */
 </script>
