@@ -80,7 +80,7 @@ export class SurveyResponseController {
     let originalQuestionId = '';
     let encryptTenantId = '';
     let originalTenantId = '';
-    
+
     // 处理加密数据（数组格式）
     if (
       encryptType === ENCRYPT_TYPE.RSA &&
@@ -101,8 +101,8 @@ export class SurveyResponseController {
       originalUserId = encryptUserId;
       originalAssessmentId = encryptAssessmentId;
       originalQuestionId = encryptQuestionId;
-    // 非加密通道时，直接透传字符串 tenantId
-    originalTenantId = encryptTenantId || (value as any)?.tenantId || '';
+      // 非加密通道时，直接透传字符串 tenantId
+      originalTenantId = encryptTenantId || (value as any)?.tenantId || '';
     } else {
       // 处理非加密数据（字符串格式）
       formValues = JSON.parse(JSON.stringify(result));
@@ -184,15 +184,15 @@ export class SurveyResponseController {
       whitelist: Joi.string().allow(null, ''),
       userId: Joi.alternatives().try(
         Joi.array().items(Joi.string()),
-        Joi.string().allow(null, '')
+        Joi.string().allow(null, ''),
       ),
       assessmentId: Joi.alternatives().try(
         Joi.array().items(Joi.string()),
-        Joi.string().allow(null, '')
+        Joi.string().allow(null, ''),
       ),
       questionId: Joi.alternatives().try(
         Joi.array().items(Joi.string()),
-        Joi.string().allow(null, '')
+        Joi.string().allow(null, ''),
       ),
       tenantId: Joi.array().items(Joi.string()).allow(null, ''),
     }).validate(reqBody, { allowUnknown: true });
@@ -294,17 +294,25 @@ export class SurveyResponseController {
   static formatAllAnswers(dataList, formValues) {
     function stripHtmlTags(str) {
       if (typeof str !== 'string') return str;
-      // 先移除HTML标签
-      let result = str.replace(/<[^>]+>/g, '');
-      // 再处理HTML实体
-      result = result
+      // 仅移除看起来像 HTML 标签/注释的结构：
+      // - 标签以字母开头，如 <b>、</div>、<img ...>
+      // - HTML 注释 <!-- ... -->
+      // 保留普通小于/大于号，如 "1 < 2"、"a > b"。
+      const removeHtmlLike = str
+        // 去掉注释
+        .replace(/<!--([\s\S]*?)-->/g, '')
+        // 去掉以字母开头的标签（含关闭标签）
+        .replace(/<\/?[a-zA-Z][^>]*>/g, '');
+
+      // 将常见 HTML 实体还原为字符，避免 &lt; 被误认为标签后残留
+      return removeHtmlLike
         .replace(/&lt;/g, '<')
         .replace(/&gt;/g, '>')
         .replace(/&amp;/g, '&')
         .replace(/&quot;/g, '"')
         .replace(/&#39;/g, "'")
-        .replace(/&nbsp;/g, ' ');
-      return result;
+        .replace(/&nbsp;/g, ' ')
+        .trim();
     }
     const result = [];
     dataList.forEach((questionItem, idx) => {
@@ -682,7 +690,7 @@ export class SurveyResponseController {
     if (callbackConfig?.enabled && callbackConfig?.url) {
       // 使用问卷独立配置的回调
       this.logger.info(`使用问卷独立回调配置: ${callbackConfig.url}`);
-      
+
       // 使用队列处理回调，支持延迟重试
       await this.callbackQueueService.addCallbackJob({
         callbackConfig,
@@ -698,7 +706,7 @@ export class SurveyResponseController {
         }),
         surveyPath,
       });
-      
+
       this.logger.info(`回调任务已加入队列: surveyPath=${surveyPath}`);
     } else if (canPush) {
       // 没有独立配置时，使用全局回调配置
