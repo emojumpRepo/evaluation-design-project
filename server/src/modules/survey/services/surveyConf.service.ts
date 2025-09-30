@@ -288,6 +288,7 @@ export class SurveyConfService {
    * 去除字符串中的 HTML 标签
    */
   private stripHtml(value?: string): string {
+    console.log('stripHtml', value);
     if (!value) return '';
     // 仅移除看起来像 HTML 标签/注释的结构：
     // - 标签以字母开头，如 <b>、</div>、<img ...>

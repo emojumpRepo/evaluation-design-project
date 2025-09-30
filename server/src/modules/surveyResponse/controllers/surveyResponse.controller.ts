@@ -293,7 +293,18 @@ export class SurveyResponseController {
 
   static formatAllAnswers(dataList, formValues) {
     function stripHtmlTags(str) {
-      return typeof str === 'string' ? str.replace(/<[^>]+>/g, '') : str;
+      if (typeof str !== 'string') return str;
+      // 先移除HTML标签
+      let result = str.replace(/<[^>]+>/g, '');
+      // 再处理HTML实体
+      result = result
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&amp;/g, '&')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/&nbsp;/g, ' ');
+      return result;
     }
     const result = [];
     dataList.forEach((questionItem, idx) => {
@@ -310,12 +321,12 @@ export class SurveyResponseController {
         const optionMap = {} as Record<string, string>;
         const optionScoreMap = {} as Record<string, number>;
         questionItem.options.forEach((opt) => {
-          optionMap[opt.hash] = opt.text;
+          optionMap[opt.hash] = stripHtmlTags(opt.text);
           const num = Number(opt?.score);
           optionScoreMap[opt.hash] = Number.isFinite(num) ? num : 0;
         });
         const getOptionWithInput = (val) => {
-          const baseText = stripHtmlTags(optionMap[val] || val);
+          const baseText = optionMap[val] || val;
           const inputKey = `${questionItem.field}_${val}`;
           const inputValue = formValues[inputKey];
           if (
