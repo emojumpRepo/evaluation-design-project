@@ -288,7 +288,25 @@ export class SurveyConfService {
    * 去除字符串中的 HTML 标签
    */
   private stripHtml(value?: string): string {
+    console.log('stripHtml', value);
     if (!value) return '';
-    return value.replace(/<[^>]*>/g, '').trim();
+    // 仅移除看起来像 HTML 标签/注释的结构：
+    // - 标签以字母开头，如 <b>、</div>、<img ...>
+    // - HTML 注释 <!-- ... -->
+    // 保留普通小于/大于号，如 "1 < 2"、"a > b"。
+    const removeHtmlLike = value
+      // 去掉注释
+      .replace(/<!--([\s\S]*?)-->/g, '')
+      // 去掉以字母开头的标签（含关闭标签）
+      .replace(/<\/?[a-zA-Z][^>]*>/g, '');
+
+    // 将常见 HTML 实体还原为字符，避免 &lt; 被误认为标签后残留
+    return removeHtmlLike
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&amp;/g, '&')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .trim();
   }
 }
