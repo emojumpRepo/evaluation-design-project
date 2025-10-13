@@ -137,7 +137,7 @@ export const useEditStore = defineStore('edit', () => {
   const createNewQuestion = ({ type }: { type: QUESTION_TYPE }) => {
     const fields = questionDataList.value.map((item: any) => item.field)
     const newQuestion: Record<string, any> = getQuestionByType(type, fields)
-    newQuestion.title = newQuestion.title = `标题${questionDataList.value.length + 1}`
+    newQuestion.title = `标题${questionDataList.value.length + 1}`
     if (type === QUESTION_TYPE.VOTE) {
       newQuestion.innerType = QUESTION_TYPE.RADIO
     }

@@ -34,6 +34,8 @@ switch (props.moduleConfig.type) {
   case QUESTION_TYPE.RADIO:
   case QUESTION_TYPE.CHECKBOX:
   case QUESTION_TYPE.VOTE:
+  case QUESTION_TYPE.SELECT:
+  case QUESTION_TYPE.SELECT_MULTIPLE:
     advancedComponent.value = defineAsyncComponent(() => import('./OptionConfig.vue'))
     break
   case QUESTION_TYPE.RADIO_STAR:

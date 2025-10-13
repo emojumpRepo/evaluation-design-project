@@ -56,6 +56,7 @@ export interface DataItem {
   valid?: string;
   field: string;
   title: string;
+  content?: string;
   placeholder: string;
   randomSort?: boolean;
   checked: boolean;

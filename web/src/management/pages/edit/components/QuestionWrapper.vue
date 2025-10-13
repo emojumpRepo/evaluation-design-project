@@ -7,7 +7,11 @@
   >
     <div><slot v-if="moduleConfig.type !== 'section'"></slot></div>
 
-    <div :class="[showHover ? 'visibility' : 'hidden', 'hoverItem']">
+    <div
+      :class="[showHover ? 'visibility' : 'hidden', 'hoverItem']"
+      @mouseenter="onHoverItemEnter"
+      @mouseleave="onHoverItemLeave"
+    >
       <div
         class="item el-icon-rank"
         @click.stop.prevent
@@ -75,6 +79,7 @@ const { getJumpLogicText, hasJumpLogic } = useJumpLogicInfo(props.moduleConfig.f
 
 const isHover = ref(false)
 const isMove = ref(false)
+const hoverTimer = ref<number | null>(null)
 
 const itemClass = computed(() => {
   return {
@@ -125,9 +130,30 @@ const onMoveUp = () => {
 }
 
 const onMouseenter = () => {
+  // 清除可能存在的隐藏定时器
+  if (hoverTimer.value) {
+    clearTimeout(hoverTimer.value)
+    hoverTimer.value = null
+  }
   isHover.value = true
 }
 const onMouseleave = () => {
+  // 延迟隐藏，给鼠标移动到菜单的时间
+  hoverTimer.value = setTimeout(() => {
+    isHover.value = false
+    hoverTimer.value = null
+  }, 200) as unknown as number
+}
+const onHoverItemEnter = () => {
+  // 鼠标进入菜单时，清除隐藏定时器，保持显示
+  if (hoverTimer.value) {
+    clearTimeout(hoverTimer.value)
+    hoverTimer.value = null
+  }
+  isHover.value = true
+}
+const onHoverItemLeave = () => {
+  // 鼠标离开菜单时，立即隐藏
   isHover.value = false
 }
 const onMoveDown = () => {

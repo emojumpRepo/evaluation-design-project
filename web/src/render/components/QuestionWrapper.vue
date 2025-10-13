@@ -3,7 +3,7 @@
     v-if="visibility"
     :moduleConfig="questionConfig"
     :indexNumber="indexNumber"
-    :showTitle="true"
+    :showTitle="questionConfig.showTitle !== false"
     @input="handleInput"
     @change="handleChange"
   ></QuestionRuleContainer>
@@ -105,6 +105,10 @@ const updateFormData = (value) => {
 
 const handleChange = (data) => {
   emit('change', data)
+
+  // 更新formValues
+  surveyStore.changeData(data)
+
   // 处理投票题questionConfig
   if (props.moduleConfig.type === QUESTION_TYPE.VOTE) {
     questionStore.updateVoteData(data)
@@ -114,8 +118,8 @@ const handleChange = (data) => {
   processShowLogicClear()
 
   // 默认开启断点续答：记录内容
-  const formData = updateFormData(data.value)
-  storageAnswer(formData)
+  // 直接使用完整的formValues，包含所有字段和扩展字段
+  storageAnswer(formValues.value)
 }
 
 const handleInput = debounce((e) => {

@@ -22,6 +22,11 @@ export default [
     ]
   },
   {
+    title: '显隐控制词',
+    key: 'displayControlConfig',
+    formList: ['control_words']
+  },
+  {
     title: '回调配置',
     key: 'callbackConfig',
     formList: [

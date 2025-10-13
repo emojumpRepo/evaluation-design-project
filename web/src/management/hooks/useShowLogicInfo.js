@@ -24,6 +24,13 @@ export const useShowLogicInfo = (field) => {
     const rules = logicEngine?.findConditionByTarget(field) || []
 
     const conditions = flatten(rules).map((item) => {
+      // 特殊字段：显隐控制词
+      if (item.field === '__controlWords') {
+        const words = Array.isArray(unref(item.value)) ? unref(item.value) : [unref(item.value)]
+        const text = (words || []).filter(Boolean).join('、')
+        return `<span>【 显隐控制词 】 选择了 【${text}】</span> <br/>`
+      }
+      // 默认：题目与选项
       const { getQuestionTitle, getOptionTitle } = useQuestionInfo(item.field)
       return `<span>【 ${cleanRichText(getQuestionTitle.value())}】 选择了 【${getOptionTitle.value(unref(item.value)).join('、')}】</span> <br/>`
     })

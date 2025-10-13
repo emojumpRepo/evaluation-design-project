@@ -219,8 +219,8 @@ const submitSurvey = async () => {
     const res: any = await submitForm(params)
     if (res.code === 200) {
       // 提交成功后清空作答数据
-      clearSurveyData(surveyPath.value, surveyStore.userId)
-      clearSurveySubmit(surveyPath.value, surveyStore.userId)
+      // clearSurveyData(surveyPath.value, surveyStore.userId)
+      // clearSurveySubmit(surveyPath.value, surveyStore.userId)
       
       // 清理sessionStorage中的参数缓存
       const sessionKey = `survey_params_${surveyPath.value}`

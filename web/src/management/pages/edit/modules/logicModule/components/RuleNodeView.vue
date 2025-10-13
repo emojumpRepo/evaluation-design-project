@@ -24,8 +24,11 @@
           >
             <el-select
               class="select field-select"
-              v-model="ruleTarget"
+              v-model="selectedTargets"
               placeholder="请选择"
+              multiple
+              collapse-tags
+              collapse-tags-tooltip
               @change="(val: any) => handleChange(ruleNode, 'target', val)"
             >
               <el-option
@@ -46,11 +49,11 @@
   </div>
 </template>
 <script setup lang="ts">
-import { ref, computed, shallowRef, inject, type ComputedRef } from 'vue'
+import { ref, computed, shallowRef, inject, type ComputedRef, watch } from 'vue'
 import { cloneDeep } from 'lodash-es'
 import { ElMessageBox } from 'element-plus'
 import 'element-plus/theme-chalk/src/message-box.scss'
-import { RuleNode } from '@/common/logicEngine/RuleBuild'
+import { RuleNode, ConditionNode } from '@/common/logicEngine/RuleBuild'
 import { cleanRichText } from '@/common/xss'
 import { useEditStore } from '@/management/stores/edit'
 import { storeToRefs } from 'pinia'
@@ -67,13 +70,42 @@ const props = defineProps({
   }
 })
 const emit = defineEmits(['delete'])
-const ruleTarget = computed(() => {
-  return props.ruleNode.target
-})
+const selectedTargets = ref<string[]>([])
+// 初始化与外部同步
+watch(
+  () => props.ruleNode.target,
+  (v: string) => {
+    const next = v ? [v] : []
+    if (JSON.stringify(next) !== JSON.stringify(selectedTargets.value)) {
+      selectedTargets.value = next
+    }
+  },
+  { immediate: true }
+)
 const handleChange = (ruleNode: any, key: any, value: any) => {
   switch (key) {
     case 'target':
-      ruleNode.setTarget(value)
+      // 支持一次选择多道目标题：第一个作为当前规则，其他目标克隆为新规则
+      if (Array.isArray(value)) {
+        const list = value.filter(Boolean)
+        if (list.length === 0) return
+        // 当前规则使用第一个
+        ruleNode.setTarget(list[0])
+        // 其余目标创建新规则并复制条件
+        list.slice(1).forEach((t: string) => {
+          // 避免重复目标
+          if (showLogicEngine.value.findTargetsByScope('question').includes(t)) return
+          const newRule = new RuleNode()
+          newRule.setTarget(t)
+          ;(ruleNode.conditions || []).forEach((c: any) => {
+            const cond = new ConditionNode(c.field, c.operator, cloneDeep(c.value))
+            newRule.addCondition(cond)
+          })
+          showLogicEngine.value.addRule(newRule)
+        })
+      } else {
+        ruleNode.setTarget(value)
+      }
       break
   }
 }
@@ -108,8 +140,12 @@ const targetQuestionList = computed(() => {
   const currntIndex = Math.max(...currntIndexs)
   let questionList = cloneDeep(renderData.value.slice(currntIndex + 1))
   return questionList.map((item: any) => {
+    const isDescription = item.type === 'description'
+    const baseLabel = isDescription
+      ? (item?.content || '').replace(/<[^>]*>/g, '').slice(0, 30) || '描述文本'
+      : `${item.showIndex ? item.indexNumber + '.' : ''} ${cleanRichText(item.title)}`
     return {
-      label: `${item.showIndex ? item.indexNumber + '.' : ''} ${cleanRichText(item.title)}`,
+      label: baseLabel,
       value: item.field,
       disabled: showLogicEngine.value.findTargetsByScope('question').includes(item.field)
     }

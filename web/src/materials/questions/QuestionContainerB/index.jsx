@@ -105,9 +105,14 @@ export default defineComponent({
     if (BlockComponent) {
       dynamicComponent = BlockComponent
     }
+
+    // 描述组件不显示标题
+    const shouldShowTitle = this.type === 'description' ? false : this.showTitle
+    const isDescription = this.type === 'description'
+
     return (
-      <div class={['question', isSelected ? 'isSelected' : '']}>
-        {this.showTitle && <EditTitle {...props} onChange={this.onChange} />}
+      <div class={['question', isSelected ? 'isSelected' : '', isDescription ? 'is-description' : '']}>
+        {shouldShowTitle && <EditTitle {...props} onChange={this.onChange} />}
 
         <div class="question-block">
           {this.showEditComponent ? (

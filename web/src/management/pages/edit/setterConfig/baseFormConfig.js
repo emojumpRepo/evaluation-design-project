@@ -206,4 +206,25 @@ export default {
       return !!data?.callbackConfig?.enabled && !!data?.callbackConfig?.headersEnabled
     }
   }
+  ,
+  control_words: {
+    key: 'controlWords',
+    label: '显隐控制词',
+    type: 'Customed',
+    title: '',
+    content: [
+      {
+        key: 'controlWords',
+        label: '显隐控制词',
+        type: 'MultiSelect',
+        placeholder: '请选择或输入控制词后回车添加',
+        allowCreate: true,
+        filterable: true,
+        optionsKey: 'controlWords', // 从当前值渲染为可选项，亦可直接输入新词
+        contentClass: 'w-100'
+      }
+    ],
+    tip: '支持下拉选择已配置的控制词，或直接输入新词按回车动态添加；保存结果为字符串数组。',
+    placement: 'top'
+  }
 }

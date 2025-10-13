@@ -71,6 +71,10 @@ export const meta = {
         min: {
           placeholder: '0',
           value: 0
+        },
+        step: {
+          placeholder: '1',
+          value: 1
         }
       }
     },
@@ -131,6 +135,15 @@ export const meta = {
       type: 'RangeSetter',
       key: 'numberRange',
       value: [],
+      relyFunc: (data) => data.valid && data.valid === 'n'
+    },
+    {
+      name: 'numberStep',
+      title: '数字步长',
+      type: 'InputNumber',
+      key: 'numberRange.step.value',
+      placeholder: '请输入步长',
+      value: 1,
       relyFunc: (data) => data.valid && data.valid === 'n'
     },
     {

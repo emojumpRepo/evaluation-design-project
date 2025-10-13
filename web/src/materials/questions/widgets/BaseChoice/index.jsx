@@ -77,7 +77,8 @@ export default defineComponent({
       $event && $event.stopPropagation()
       $event && $event.preventDefault()
       const targetValue = item.hash
-      const values = cloneDeep(props.value)
+      // 确保values是数组类型
+      const values = Array.isArray(props.value) ? cloneDeep(props.value) : []
       if (!includes(values, targetValue)) {
         values.push(targetValue)
       } else {

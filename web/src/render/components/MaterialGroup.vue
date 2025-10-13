@@ -1,17 +1,25 @@
 <template>
   <form ref="ruleForm" :model="formValues" :rules="rules">
-    <div v-for="item in renderData" :key="item.field">
-      <QuestionWrapper
-        class="gap"
-        :moduleConfig="item"
-        :indexNumber="item.indexNumber"
-        @change="handleChange"
-      ></QuestionWrapper>
-    </div>
+    <template v-for="(row, rowIndex) in groupedRows" :key="rowIndex">
+      <div
+        class="question-row"
+        :class="`columns-${row.columns}`"
+        :style="{ display: row.columns > 1 && !isMobile ? 'grid' : 'block' }"
+      >
+        <QuestionWrapper
+          v-for="item in row.items"
+          :key="item.field"
+          class="gap question-col"
+          :moduleConfig="item"
+          :indexNumber="item.indexNumber"
+          @change="handleChange"
+        ></QuestionWrapper>
+      </div>
+    </template>
   </form>
 </template>
 <script setup>
-import { inject, provide, computed, onBeforeMount } from 'vue'
+import { inject, provide, computed, onBeforeMount, ref, onMounted, onUnmounted } from 'vue'
 import QuestionWrapper from './QuestionWrapper.vue'
 // import { flatten } from 'lodash-es'
 
@@ -38,6 +46,45 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['formChange', 'blur'])
+
+// 检测是否为移动端
+const isMobile = ref(false)
+
+const checkMobile = () => {
+  isMobile.value = window.innerWidth <= 768
+}
+
+onMounted(() => {
+  checkMobile()
+  window.addEventListener('resize', checkMobile)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', checkMobile)
+})
+
+// 将题目按照 columnsPerRow 分组成行
+const groupedRows = computed(() => {
+  const rows = []
+  let currentRow = null
+
+  props.renderData.forEach((item, index) => {
+    const columns = item.columnsPerRow || 1
+
+    // 如果是新的一行,或者列数不同,创建新行
+    if (!currentRow || currentRow.columns !== columns || currentRow.items.length >= columns) {
+      currentRow = {
+        columns: columns,
+        items: []
+      }
+      rows.push(currentRow)
+    }
+
+    currentRow.items.push(item)
+  })
+
+  return rows
+})
 
 // 这里不能直接使用change事件，否则父元素监听change的事件，会被绑定到里面的input上
 // 导致接受到的data是个Event
@@ -107,3 +154,46 @@ defineExpose({
   validate
 })
 </script>
+
+<style lang="scss" scoped>
+.question-row {
+  width: 100%;
+
+  &.columns-2 {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+
+  &.columns-3 {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+
+  &.columns-4 {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+
+  .question-col {
+    min-width: 0; // 防止内容溢出
+  }
+}
+
+// 移动端强制单列布局
+@media (max-width: 768px) {
+  .question-row {
+    display: block !important;
+
+    &.columns-2,
+    &.columns-3,
+    &.columns-4 {
+      grid-template-columns: 1fr !important;
+      gap: 0;
+    }
+
+    .question-col {
+      width: 100%;
+    }
+  }
+}
+</style>

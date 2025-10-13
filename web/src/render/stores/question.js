@@ -133,8 +133,10 @@ export const useQuestionStore = defineStore('question', () => {
 
         item.forEach((questionKey) => {
           const question = { ...questionData.value[questionKey] }
+          // 跳过描述组件的编号（描述组件不是题目）
+          const isDescriptionType = question.type === 'description'
           // 开启显示序号
-          if (question.showIndex && !hideMap.includes(questionKey)) {
+          if (question.showIndex && !hideMap.includes(questionKey) && !isDescriptionType) {
             question.indexNumber = index++
           }
 

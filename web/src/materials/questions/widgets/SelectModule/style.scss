@@ -1,0 +1,25 @@
+.select-module {
+  width: 100%;
+
+  :deep(.el-select) {
+    width: 100%;
+  }
+
+  :deep(.el-select__tags) {
+    flex-wrap: wrap;
+  }
+}
+
+.select-module-readonly {
+  padding: 10px 0;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+
+  .select-display-value {
+    color: #606266;
+    font-size: 14px;
+    line-height: 1.5;
+    word-break: break-word;
+  }
+}

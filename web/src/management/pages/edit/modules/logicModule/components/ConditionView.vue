@@ -58,6 +58,7 @@ import { computed, inject, ref, type ComputedRef } from 'vue'
 import { ConditionNode, RuleNode } from '@/common/logicEngine/RuleBuild'
 import { CHOICES } from '@/common/typeEnum'
 import { cleanRichTextWithMediaTag } from '@/common/xss'
+import { useEditStore } from '@/management/stores/edit'
 const renderData = inject<ComputedRef<Array<any>>>('renderData') || ref([])
 const props = defineProps({
   index: {
@@ -81,9 +82,10 @@ const props = defineProps({
     }
   }
 })
+const editStore = useEditStore()
 const fieldList = computed(() => {
   const currentIndex = renderData.value.findIndex((item) => item.field === props.ruleNode.target)
-  return renderData.value
+  const questionFields = renderData.value
     .slice(0, currentIndex)
     .filter((question: any) => CHOICES.includes(question.type))
     .map((item: any) => {
@@ -92,11 +94,20 @@ const fieldList = computed(() => {
         value: item.field
       }
     })
+
+  // 追加显隐控制词虚拟字段
+  const extra = [{ label: '显隐控制词', value: '__controlWords' }]
+  return [...extra, ...questionFields]
 })
 const getRelyOptions = computed(() => {
   const { field } = props.conditionNode
   if (!field) {
     return []
+  }
+  // 针对显隐控制词：从问卷设置中读取配置
+  if (field === '__controlWords') {
+    const words = (editStore.schema?.baseConf as any)?.controlWords || []
+    return (words || []).map((w: string) => ({ label: w, value: w }))
   }
   const currentQuestion = renderData.value.find((item) => item.field === field)
   return (
