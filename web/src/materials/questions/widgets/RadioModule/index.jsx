@@ -24,6 +24,10 @@ export default defineComponent({
       type: String,
       default: 'vertical'
     },
+    horizontalColumns: {
+      type: [Number, String],
+      default: 0
+    },
     options: {
       type: Array,
       default: () => []
@@ -108,6 +112,7 @@ export default defineComponent({
           type={this.type}
           field={this.field}
           layout={this.layout}
+          columnsPerRow={this.horizontalColumns}
           onChange={this.onChange}
           quotaDisplay={this.quotaDisplay}
         >

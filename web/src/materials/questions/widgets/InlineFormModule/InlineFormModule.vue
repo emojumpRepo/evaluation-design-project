@@ -34,7 +34,7 @@
             :max="segment.max"
             :step="segment.step"
             class="inline-input-number"
-            controls-position="right"
+            :controls="false"
           />
 
           <!-- 下拉选择 -->
@@ -395,13 +395,43 @@ export default {
       }
 
       .inline-input-number {
-        width: 150px;
+        width: 130px;
         display: inline-flex;
         vertical-align: middle;
+        :deep(.el-input-number) {
+          width: 100%;
+        }
+        :deep(.el-input-number__increase),
+        :deep(.el-input-number__decrease) {
+          display: none; // 隐藏上下调整按钮
+        }
+        :deep(.el-input__wrapper) {
+          border: none;
+          border-bottom: 1px solid #dcdfe6; // 仅保留下边线
+          border-radius: 0;
+          box-shadow: none;
+          padding: 1px 0;
+          background-color: transparent;
+          &:hover {
+            border-bottom-color: #c0c4cc;
+          }
+          &.is-focus {
+            border-bottom-color: var(--el-color-primary);
+          }
+        }
+        // 隐藏各浏览器默认微调按钮
+        :deep(input[type='number']) {
+          -moz-appearance: textfield;
+        }
+        :deep(input[type='number']::-webkit-outer-spin-button),
+        :deep(input[type='number']::-webkit-inner-spin-button) {
+          -webkit-appearance: none;
+          margin: 0;
+        }
       }
 
       .inline-select {
-        width: 150px;
+        width: 120px;
         display: inline-flex;
         vertical-align: middle;
       }

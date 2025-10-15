@@ -1280,6 +1280,9 @@ export class SurveyController {
             vote: '投票',
             cascader: '多级联动',
             description: '描述文本',
+            select: '下拉单选',
+            'select-multiple': '下拉多选',
+            'inline-form': '内联填空',
           };
 
           const questionData: any = {
@@ -1329,6 +1332,11 @@ export class SurveyController {
                 .map((option) => option.placeholderDesc || '')
                 .join('; ');
             }
+          }
+
+          // 处理描述文本/内联填空的内容：导出时放到“选项内容”列，便于与导入格式对齐
+          if (question.type === 'description' || question.type === 'inline-form') {
+            questionData.选项内容 = (question as any).content || ''
           }
 
           return questionData;

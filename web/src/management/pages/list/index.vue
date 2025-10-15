@@ -426,6 +426,14 @@ const onShowCreateForm = () => {
   showCreateForm.value = true
 }
 
+// 重置一次性创建缓冲区（防止后续创建复用上次Excel/文本导入的模板）
+const resetCreateBuffer = () => {
+  createMethod.value = ''
+  questionList.value = []
+  pageConf.value = []
+  descriptionConfig.value = {}
+}
+
 const onConfirmCreate = async (formValue: { title: string; remark?: string; surveyType: string; groupId?: string }, callback: (success: boolean) => void) => {
   try {
     switch(createMethod.value) {
@@ -452,6 +460,7 @@ const onConfirmCreate = async (formValue: { title: string; remark?: string; surv
             }
           })
           showCreateForm.value = false
+          resetCreateBuffer()
         } else {
           ElMessage.error(res?.errmsg || '创建失败')
           callback(false)
@@ -478,6 +487,7 @@ const onConfirmCreate = async (formValue: { title: string; remark?: string; surv
             }
           })
           showCreateForm.value = false
+          resetCreateBuffer()
         } else {
           ElMessage.error(res?.errmsg || '创建失败')
           callback(false)
@@ -508,6 +518,7 @@ const openExcelImport = () => {
 
 const onCloseExcelImport = () => {
   showExcelImport.value = false
+  resetCreateBuffer()
 }
 
 const onExcelUploadSuccess = (newQuestionList: Array<any>, newPageConf?: number[], newDescriptionConfig?: any) => {
@@ -519,6 +530,12 @@ const onExcelUploadSuccess = (newQuestionList: Array<any>, newPageConf?: number[
 }
 
 const onShowCreateFormExcelImport = () => {
+  showCreateForm.value = true
+}
+
+// 普通创建（直接进入表单创建）入口，避免与“选择创建方式”按钮重名
+const onCreateDirect = () => {
+  resetCreateBuffer()
   showCreateForm.value = true
 }
 

@@ -205,13 +205,14 @@ export default {
     relyFunc: (data) => {
       return !!data?.callbackConfig?.enabled && !!data?.callbackConfig?.headersEnabled
     }
-  }
-  ,
+  },
   control_words: {
     key: 'controlWords',
     label: '显隐控制词',
     type: 'Customed',
     title: '',
+    tip: '设置问卷接收的题目显隐控制词，可在问卷编辑——逻辑设置模块根据显隐控制词控制题目的显示逻辑',
+    tipShow: true,
     content: [
       {
         key: 'controlWords',
@@ -219,12 +220,14 @@ export default {
         type: 'MultiSelect',
         placeholder: '请选择或输入控制词后回车添加',
         allowCreate: true,
+        tip: '设置问卷接收的题目显隐控制词，可在“问卷编辑” — “逻辑设置”根据显隐控制词控制题目的显示逻辑',
+        tipShow: true,
+        placement: 'top',
         filterable: true,
         optionsKey: 'controlWords', // 从当前值渲染为可选项，亦可直接输入新词
         contentClass: 'w-100'
       }
     ],
-    tip: '支持下拉选择已配置的控制词，或直接输入新词按回车动态添加；保存结果为字符串数组。',
     placement: 'top'
   }
 }

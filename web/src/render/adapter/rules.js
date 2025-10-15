@@ -275,7 +275,7 @@ export function generateValidArr(
                 if (fieldValue !== undefined && fieldValue !== null && fieldValue !== '') {
                   const tip = numberMinValidator(fieldValue, fieldConfig.min)
                   if (tip) {
-                    errors = [`${fieldConfig.name}: ${tip}`]
+                    errors = [tip]
                   }
                 }
               }
@@ -294,7 +294,7 @@ export function generateValidArr(
                 if (fieldValue !== undefined && fieldValue !== null && fieldValue !== '') {
                   const tip = numberMaxValidator(fieldValue, fieldConfig.max)
                   if (tip) {
-                    errors = [`${fieldConfig.name}: ${tip}`]
+                    errors = [tip]
                   }
                 }
               }

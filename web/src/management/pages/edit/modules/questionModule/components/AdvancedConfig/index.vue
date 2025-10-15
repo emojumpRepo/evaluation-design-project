@@ -1,5 +1,6 @@
 <template>
   <Component
+    v-if="advancedComponent"
     :is="advancedComponent"
     :fieldId="editStore.moduleConfig.field"
     @handleChange="handleChange"

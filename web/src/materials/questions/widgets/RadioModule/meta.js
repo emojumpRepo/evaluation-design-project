@@ -77,6 +77,12 @@ const meta = {
       defaultValue: 'vertical'
     },
     {
+      name: 'horizontalColumns',
+      propType: Number,
+      description: '横排每行列数',
+      defaultValue: 2
+    },
+    {
       name: 'quotaDisplay',
       propType: Boolean,
       description: '展示配额剩余数量',
@@ -103,6 +109,17 @@ const meta = {
             value: 'horizontal'
           },
         ]
+      },
+      {
+        label: '横排每行列数',
+        type: 'InputNumber',
+        key: 'horizontalColumns',
+        value: 2,
+        min: 2,
+        max: 6,
+        tip: '仅在横排时生效，留空或0为按样式默认',
+        relyFunc: (moduleConfig) => moduleConfig?.layout === 'horizontal',
+        contentClass: 'input-number-config'
       },
     ]
   },{

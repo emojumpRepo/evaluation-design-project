@@ -86,6 +86,12 @@ const meta = {
       propType: String,
       description: '排列方式',
       defaultValue: 'vertical'
+    },
+    {
+      name: 'horizontalColumns',
+      propType: Number,
+      description: '横排每行列数',
+      defaultValue: 2
     }
   ],
   formConfig: [
@@ -110,6 +116,17 @@ const meta = {
               value: 'horizontal'
             },
           ]
+        },
+        {
+          label: '横排每行列数',
+          type: 'InputNumber',
+          key: 'horizontalColumns',
+          value: 2,
+          min: 2,
+          max: 6,
+          tip: '仅在横排时生效，留空或0为按样式默认',
+          relyFunc: (moduleConfig) => moduleConfig?.layout === 'horizontal',
+          contentClass: 'input-number-config'
         },
         {
           label: '至少选择数',

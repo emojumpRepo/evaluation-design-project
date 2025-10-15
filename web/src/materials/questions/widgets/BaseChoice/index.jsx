@@ -44,6 +44,11 @@ export default defineComponent({
       type: String,
       default: 'vertical'
     },
+    // 横排时每行展示的列数
+    columnsPerRow: {
+      type: [Number, String],
+      default: 0
+    },
     voteTotal: {
       type: Number,
       default: 10
@@ -79,9 +84,39 @@ export default defineComponent({
       const targetValue = item.hash
       // 确保values是数组类型
       const values = Array.isArray(props.value) ? cloneDeep(props.value) : []
+      const options = Array.isArray(props.options) ? props.options : []
+      const isMutex = !!item.mutex
+      const optionMap = new Map(options.map((o) => [o.hash, o]))
+      const getMutexTargets = (opt) => {
+        if (!opt || !opt.mutex) return []
+        const targets = Array.isArray(opt.mutexTargets) ? opt.mutexTargets.filter(Boolean) : []
+        if (targets.length) return targets
+        return options.map((o) => o.hash).filter((h) => h !== opt.hash)
+      }
+
       if (!includes(values, targetValue)) {
-        values.push(targetValue)
+        // 勾选目标
+        if (isMutex) {
+          // 勾选互斥项：移除其互斥目标中已勾选的项
+          const targets = getMutexTargets(optionMap.get(targetValue))
+          for (let i = values.length - 1; i >= 0; i--) {
+            if (targets.includes(values[i])) values.splice(i, 1)
+          }
+          values.push(targetValue)
+        } else {
+          // 勾选普通项：若与已选互斥项冲突，则移除冲突的互斥项
+          const selectedMutex = values
+            .map((h) => optionMap.get(h))
+            .filter((o) => o && o.mutex)
+          const conflicted = selectedMutex.find((m) => getMutexTargets(m).includes(targetValue))
+          if (conflicted) {
+            const idx = values.indexOf(conflicted.hash)
+            if (idx > -1) values.splice(idx, 1)
+          }
+          values.push(targetValue)
+        }
       } else {
+        // 取消勾选
         const index = findIndex(values, (val) => val === targetValue)
         if (index !== -1) {
           values.splice(index, 1)
@@ -108,7 +143,16 @@ export default defineComponent({
               !item.hide && (
                 <div
                   key={item.hash || item.value}
-                  style={this.choiceStyle}
+                  style={{
+                    ...(this.choiceStyle || {}),
+                    ...(this.layout === 'horizontal' && Number(this.columnsPerRow) > 0
+                      ? {
+                          flex: `0 0 ${100 / Number(this.columnsPerRow)}%`,
+                          maxWidth: `${100 / Number(this.columnsPerRow)}%`,
+                          minWidth: `${100 / Number(this.columnsPerRow)}%`
+                        }
+                      : {})
+                  }}
                   class={['choice-outer']}
                 >
                   <div style="position: relative" class="choice-content">

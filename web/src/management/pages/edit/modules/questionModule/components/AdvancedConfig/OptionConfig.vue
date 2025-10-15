@@ -11,10 +11,16 @@
       size="large"
     >
       <div class="option-handwrite">
+        <div class="option-table-scroll">
+          <div class="option-table">
         <div class="option-header">
           <div class="header-item flex-1">选项内容</div>
           <div class="header-item w100">分值</div>
+          <div class="header-item w100 mutex-head">与其余互斥</div>
+          <div class="header-item w100">默认隐藏</div>
+          <div class="header-item w285" v-if="showMutexTargets">互斥目标（可多选）</div>
           <div class="header-item w285" v-if="showOthers">选项后增添输入框</div>
+          <div class="header-item w285">选中本项时展示以下选项</div>
         </div>
         <div>
           <draggable :list="curOptions" handle=".drag-handle" itemKey="hash">
@@ -32,6 +38,30 @@
                 <div class="oitem w100">
                   <el-input-number v-model="element.score" :min="0" :max="999999" :step="1" size="small" />
                 </div>
+                <div class="oitem w100">
+                  <el-switch v-model="element.mutex"></el-switch>
+                </div>
+                <div class="oitem w100">
+                  <el-switch v-model="element.defaultHidden"></el-switch>
+                </div>
+                <div class="oitem w285" v-if="showMutexTargets">
+                  <el-select
+                    v-model="element.mutexTargets"
+                    multiple
+                    collapse-tags
+                    collapse-tags-tooltip
+                    filterable
+                    placeholder="选择与其互斥的选项，不选表示与全部互斥"
+                    style="width: 100%"
+                  >
+                    <el-option
+                      v-for="opt in optionTargetList(element.hash)"
+                      :key="opt.value"
+                      :label="opt.label"
+                      :value="opt.value"
+                    />
+                  </el-select>
+                </div>
                 <div class="oitem moreInfo lh36" v-if="showOthers">
                   <el-switch
                     :modelValue="element.others"
@@ -41,6 +71,26 @@
                     <el-input v-model="element.placeholderDesc" placeholder="提示文案"></el-input>
                     <el-checkbox v-model="element.mustOthers">必填</el-checkbox>
                   </div>
+                </div>
+
+                
+                <div class="oitem w285">
+                  <el-select
+                    v-model="element.showTargetsWhenSelected"
+                    multiple
+                    collapse-tags
+                    collapse-tags-tooltip
+                    filterable
+                    placeholder="选择被本项显示的选项"
+                    style="width: 100%"
+                  >
+                    <el-option
+                      v-for="opt in optionTargetList(element.hash)"
+                      :key="opt.value"
+                      :label="opt.label"
+                      :value="opt.value"
+                    />
+                  </el-select>
                 </div>
 
                 <div class="operate-area">
@@ -54,6 +104,8 @@
               </div>
             </template>
           </draggable>
+        </div>
+          </div>
         </div>
         <div class="add-btn-row">
           <div class="add-option" @click="addOption()">
@@ -122,7 +174,14 @@ export default {
       const editStore = useEditStore()
       const { currentEditMeta } = storeToRefs(editStore)
       return currentEditMeta.value?.editConfigure?.optionEditBar.configure.showOthers
+    },
+    showMutexTargets() {
+      const editStore = useEditStore()
+      return (editStore.moduleConfig?.type || '').toLowerCase() === 'checkbox'
     }
+  },
+  provide() {
+    return {}
   },
   components: {
     draggable
@@ -133,15 +192,45 @@ export default {
   watch: {
     options: {
       handler(val) {
-        this.curOptions = _cloneDeep(val)
+        const list = _cloneDeep(val)
+        list.forEach((it) => {
+          if (!Array.isArray(it.mutexTargets)) it.mutexTargets = []
+          // ensure numeric score
+          if (typeof it.score !== 'number') {
+            const parsed = Number(it.score)
+            it.score = Number.isFinite(parsed) ? parsed : 0
+          }
+          if (!Array.isArray(it.showTargetsWhenSelected)) it.showTargetsWhenSelected = []
+          if (typeof it.defaultHidden !== 'boolean') it.defaultHidden = false
+        })
+        this.curOptions = list
       },
       deep: true
     }
   },
   methods: {
+    optionTargetList(currentHash) {
+      try {
+        return (this.curOptions || [])
+          .filter((it) => it.hash && it.hash !== currentHash)
+          .map((it) => ({ label: cleanRichText(it.text || ''), value: it.hash }))
+      } catch (e) {
+        return []
+      }
+    },
     initCurOption() {
       const editStore = useEditStore()
-      this.curOptions = _cloneDeep(editStore.moduleConfig.options)
+      const list = _cloneDeep(editStore.moduleConfig.options)
+      list.forEach((it) => {
+        if (!Array.isArray(it.mutexTargets)) it.mutexTargets = []
+        if (!Array.isArray(it.showTargetsWhenSelected)) it.showTargetsWhenSelected = []
+        if (typeof it.defaultHidden !== 'boolean') it.defaultHidden = false
+        if (typeof it.score !== 'number') {
+          const parsed = Number(it.score)
+          it.score = Number.isFinite(parsed) ? parsed : 0
+        }
+      })
+      this.curOptions = list
     },
     addOtherOption() {
       this.addOption('其他', true, -1, this.fieldId)
@@ -157,7 +246,12 @@ export default {
         others: false,
         mustOthers: false,
         othersKey: '',
-        placeholderDesc: ''
+        placeholderDesc: '',
+        score: 0,
+        mutex: false,
+        mutexTargets: [],
+        showTargetsWhenSelected: [],
+        defaultHidden: false
       }
       for (const i in addOne) {
         if (i === 'others') {
@@ -239,7 +333,23 @@ export default {
 }
 
 .option-config-wrapper {
+  :deep(.el-dialog) {
+    overflow: visible;
+  }
   .option-handwrite {
+    :deep(.el-dialog__body) {
+      overflow: visible; // 允许内部横向滚动容器展示滚动条
+      padding-bottom: 8px;
+    }
+    .option-table-scroll {
+      overflow-x: auto;
+      overflow-y: hidden;
+      width: 100%;
+      padding-bottom: 8px; // 预留滚动条空间
+    }
+    .option-table {
+      min-width: 1400px; // 统一列宽，避免被压缩
+    }
     .option-header {
       position: relative;
       background: #f9fafc;
@@ -253,12 +363,22 @@ export default {
       padding-right: 50px;
       display: flex;
       overflow: hidden;
-
-      .option-item {
-        margin-right: 8px;
-        &.mutex-head {
-          text-align: center;
-        }
+      .header-item {
+        white-space: nowrap;
+        padding: 0 8px;
+      }
+      .header-item.flex-1 {
+        flex: 1 1 auto;
+        min-width: 260px;
+      }
+      .header-item.w100 {
+        flex: 0 0 120px;
+        width: 120px;
+        text-align: center;
+      }
+      .header-item.w285 {
+        flex: 0 0 285px;
+        width: 285px;
       }
     }
     .option-item {
@@ -279,14 +399,11 @@ export default {
           background-color: #fff !important;
         }
       }
-      .flex-1 { min-width: 0; }
+      .flex-1 { min-width: 260px; }
       .w120 {
         width: 120px;
       }
-      .w100 {
-        flex: 0 0 120px;
-        width: 120px;
-      }
+      .w100 { flex: 0 0 120px; width: 120px; }
       .icon-mobile {
         line-height: 36px;
         margin-right: 8px;

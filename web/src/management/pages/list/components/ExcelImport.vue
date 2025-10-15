@@ -247,30 +247,42 @@ const excelToSchema = (excelQuestions: Array<{
       case "多行输入框":
       case "评分":
       case "多级联动":
-      case "描述文本":
+      case "描述文本": {
+        // 描述文本内容落在 options 列
+        question.content = decodeHtmlEntities(options || '')
         questions.push(question);
         break;
+      }
+      case "内联填空": {
+        // 内联填空题干模板（含 {{input:...}} 或 {{select:...}}）放在 options 列
+        question.content = decodeHtmlEntities(options || '')
+        questions.push(question);
+        break;
+      }
 
       case "单选":
       case "多选":
       case "投票":
-      case "判断题": {
+      case "判断题":
+      case "下拉单选":
+      case "下拉多选": {
         if (options && options.trim()) {
-          // 处理分号分割的选项格式
+          // 处理分号分割的选项格式（兼容中文分号 '；' 与英文分号 ';'）
           // 先解码HTML实体
           const decodedOptions = decodeHtmlEntities(options);
-          
-          // 更智能的分割：只在分号前后都有内容时才分割
-          const optionTexts = decodedOptions
-            .split(';')
-            .map(text => text.trim())
-            .filter(text => text.length > 0);
-          
-          const optionScores = scores ? scores.split(';').map(score => score.trim()) : [];
-          const othersOptions = others ? others.split(';').map(text => text.trim()).filter(Boolean) : [];
-          const mustOthersOptions = mustOthers ? mustOthers.split(';').map(text => text.trim()) : [];
-          const othersKeyOptions = othersKey ? othersKey.split(';').map(text => text.trim()) : [];
-          const placeholderDescOptions = placeholderDesc ? placeholderDesc.split(';').map(text => text.trim()) : [];
+
+          const splitSmart = (val?: string) =>
+            (val || '')
+              .split(/[；;]+/)
+              .map((s) => s.trim())
+              .filter((s) => s.length > 0)
+
+          const optionTexts = splitSmart(decodedOptions)
+          const optionScores = splitSmart(scores)
+          const othersOptions = splitSmart(others)
+          const mustOthersOptions = splitSmart(mustOthers)
+          const othersKeyOptions = splitSmart(othersKey)
+          const placeholderDescOptions = splitSmart(placeholderDesc)
           
           question.options = optionTexts.map((text, index) => {
             // 检查是否是"其他"选项
