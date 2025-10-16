@@ -1,0 +1,73 @@
+.description-text-module {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #333;
+
+  .description-content {
+    word-wrap: break-word;
+    word-break: break-word;
+
+    :deep(p) {
+      margin: 0 0 8px 0;
+
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+
+    :deep(h1), :deep(h2), :deep(h3), :deep(h4), :deep(h5), :deep(h6) {
+      margin: 12px 0 8px 0;
+      font-weight: 600;
+    }
+
+    :deep(ul), :deep(ol) {
+      margin: 8px 0;
+      padding-left: 24px;
+    }
+
+    :deep(img) {
+      max-width: 100%;
+      height: auto;
+    }
+
+    :deep(a) {
+      color: #1890ff;
+      text-decoration: none;
+
+      &:hover {
+        text-decoration: underline;
+      }
+    }
+
+    :deep(blockquote) {
+      margin: 8px 0;
+      padding: 8px 16px;
+      border-left: 4px solid #e0e0e0;
+      background-color: #f5f5f5;
+    }
+
+    :deep(code) {
+      padding: 2px 4px;
+      background-color: #f5f5f5;
+      border-radius: 3px;
+      font-family: monospace;
+    }
+
+    :deep(pre) {
+      margin: 8px 0;
+      padding: 12px;
+      background-color: #f5f5f5;
+      border-radius: 4px;
+      overflow-x: auto;
+
+      code {
+        padding: 0;
+        background-color: transparent;
+      }
+    }
+  }
+
+  &.readonly {
+    // 只读模式下的样式
+  }
+}

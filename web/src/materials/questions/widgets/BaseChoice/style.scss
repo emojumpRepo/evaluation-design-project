@@ -41,11 +41,11 @@
     &.horizontal {
       display: flex;
       flex-direction: row;
-      align-items: flex-start;
       flex-wrap: wrap;
 
       .choice-outer {
-        width: 50%;
+        // 默认三列；当传入 columnsPerRow 时用内联样式覆盖
+        min-width: 33.33%;
 
         .question {
           padding-top: 0;

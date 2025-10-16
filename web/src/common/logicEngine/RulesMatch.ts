@@ -18,8 +18,9 @@ export class ConditionNode<F extends string, O extends Operator> {
 
   match(facts: Fact): boolean | undefined {
     // console.log(this.calculateHash())
-    // 如果该特征在事实对象中不存在，则直接返回false
-    if (!facts[this.field]) {
+    // 特殊操作符（例如分数区间）不依赖 facts[field]，故跳过缺失校验
+    const needFieldPresence = this.operator !== Operator.ScoreBetween
+    if (needFieldPresence && !facts[this.field]) {
       this.result = false
       return this.result
     }
@@ -56,6 +57,41 @@ export class ConditionNode<F extends string, O extends Operator> {
           this.result = facts[this.field].toString() !== this.value
           return this.result
         }
+      case Operator.ScoreBetween:
+        try {
+          // value: { fields: string[], min?: number, max?: number }
+          const { fields = [], min, max } = (this.value || {}) as any
+          if (!Array.isArray(fields) || fields.length === 0) {
+            this.result = false
+            return this.result
+          }
+          // 计算指定题目分数之和
+          const schema: any[] = (facts as any)['__schema'] || []
+          const fieldToScoreMap = new Map<string, number>()
+          schema.forEach((q: any) => {
+            if (!q || !q.field || !Array.isArray(q.options)) return
+            const answer = facts[q.field]
+            const selected = Array.isArray(answer) ? answer : (answer ? [answer] : [])
+            let sum = 0
+            q.options.forEach((opt: any) => {
+              if (selected.includes(opt.hash)) {
+                const s = Number(opt.score || 0)
+                if (Number.isFinite(s)) sum += s
+              }
+            })
+            fieldToScoreMap.set(q.field, sum)
+          })
+
+          const total = fields.reduce((acc: number, f: string) => acc + (fieldToScoreMap.get(f) || 0), 0)
+          let ok = true
+          if (typeof min === 'number') ok = ok && total >= min
+          if (typeof max === 'number') ok = ok && total <= max
+          this.result = ok
+          return this.result
+        } catch (e) {
+          this.result = false
+          return this.result
+        }
       // 其他比较操作符的判断逻辑
       default:
         return this.result
@@ -76,6 +112,10 @@ export class RuleNode {
   ) {
     this.conditions = new Map()
   }
+  // 条件比较关系：and/or，默认 and
+  public comparor: 'and' | 'or' = 'and'
+  // 条件之间连接符（长度=conditions-1）
+  public joins: Array<'and' | 'or'> = []
   // 添加条件规则到规则引擎中
   addCondition(condition: ConditionNode<string, Operator>) {
     const hash = condition.calculateHash()
@@ -84,25 +124,64 @@ export class RuleNode {
 
   // 匹配条件规则
   match(fact: Fact, comparor?: any) {
-    let res: boolean | undefined = undefined
-    if (comparor === 'or') {
-      res = Array.from(this.conditions.entries()).some(([, value]) => {
-        const res = value.match(fact)
-        if (res) {
-          return true
-        } else {
-          return false
+    // 支持条件分组：按 groupId 聚合；若无分组，逐条件按 joins 连接
+    const list = Array.from(this.conditions.values())
+    if (list.length === 0) {
+      this.result = true
+      return true
+    }
+
+    // 检测是否有显式分组
+    const hasAnyGroup = list.some((c: any) => typeof c.groupId === 'number' && c.groupId !== 0)
+    let res: boolean
+    if (hasAnyGroup) {
+      // 分组模式：按原顺序识别各组段，组内用 joins 计算，组间使用边界 join（上一段最后一条与下一段首条之间的 join）
+      const joinsArr: Array<'and' | 'or'> = (this as any).joins || []
+      const results = list.map((c) => !!c.match(fact))
+      // 构建连续段
+      const segments: Array<{ gid: number; start: number; end: number }> = []
+      let start = 0
+      let curGid = typeof (list[0] as any).groupId === 'number' ? (list[0] as any).groupId : 0
+      for (let i = 1; i < list.length; i++) {
+        const gid = typeof (list[i] as any).groupId === 'number' ? (list[i] as any).groupId : 0
+        if (gid !== curGid) {
+          segments.push({ gid: curGid, start, end: i - 1 })
+          start = i
+          curGid = gid
         }
+      }
+      segments.push({ gid: curGid, start, end: list.length - 1 })
+
+      // 计算每段结果
+      const segRes: boolean[] = segments.map((seg) => {
+        let acc = results[seg.start]
+        for (let i = seg.start + 1; i <= seg.end; i++) {
+          const op = joinsArr[i - 1] === 'or' ? 'or' : 'and'
+          acc = op === 'or' ? (acc || results[i]) : (acc && results[i])
+        }
+        return acc
       })
+
+      // 用边界 join 连接各段
+      res = segRes[0]
+      for (let s = 1; s < segments.length; s++) {
+        const boundaryLeftIdx = segments[s - 1].end // join 索引即为左侧条件索引
+        const op = joinsArr[boundaryLeftIdx] === 'or' ? 'or' : 'and'
+        res = op === 'or' ? (res || segRes[s]) : (res && segRes[s])
+      }
     } else {
-      res = Array.from(this.conditions.entries()).every(([, value]) => {
-        const res = value.match(fact)
-        if (res) {
-          return true
-        } else {
-          return false
+      // 非分组模式：依次用 joins 连接（长度 = n-1）
+      const results = list.map((c) => !!c.match(fact))
+      if (results.length === 1) {
+        res = results[0]
+      } else {
+        const joins = (this as any).joins || []
+        res = results[0]
+        for (let i = 1; i < results.length; i++) {
+          const join = joins[i - 1] === 'or' ? 'or' : 'and'
+          res = join === 'or' ? (res || results[i]) : (res && results[i])
         }
-      })
+      }
     }
 
     this.result = res
@@ -147,12 +226,20 @@ export class RuleMatch {
     if (ruleConf instanceof Array) {
       ruleConf.forEach((rule: any) => {
         const ruleNode = new RuleNode(rule.target, rule.scope)
+        if (rule.comparor === 'or' || rule.comparor === 'and') {
+          // @ts-ignore
+          ruleNode.comparor = rule.comparor
+        }
+        if (Array.isArray(rule.joins)) {
+          // @ts-ignore
+          ruleNode.joins = rule.joins.filter((j: any) => j === 'and' || j === 'or')
+        }
         rule.conditions.forEach((condition: any) => {
-          const conditionNode = new ConditionNode(
-            condition.field,
-            condition.operator,
-            condition.value
-          )
+          const { field, operator, value, groupId, groupComparor } = condition
+          const conditionNode = new ConditionNode(field, operator, value)
+          // 挂载分组信息到运行时条件节点
+          ;(conditionNode as any).groupId = typeof groupId === 'number' ? groupId : undefined
+          ;(conditionNode as any).groupComparor = groupComparor === 'or' ? 'or' : (groupComparor === 'and' ? 'and' : undefined)
           ruleNode.addCondition(conditionNode)
         })
         this.addRule(ruleNode)
@@ -180,7 +267,7 @@ export class RuleMatch {
 
     const rule = this.rules.get(hash)
     if (rule) {
-      const result = rule.match(fact, comparor)
+      const result = rule.match(fact, comparor || rule.comparor)
       return result
     } else {
       // 默认显示

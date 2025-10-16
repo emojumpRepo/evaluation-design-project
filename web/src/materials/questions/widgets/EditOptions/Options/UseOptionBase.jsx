@@ -12,7 +12,8 @@ function useOptionBase(options) {
       others: false,
       mustOthers: false,
       othersKey: '',
-      placeholderDesc: ''
+      placeholderDesc: '',
+      score: 0
     }
     if (typeof text !== 'string') {
       text = '选项'
@@ -28,6 +29,8 @@ function useOptionBase(options) {
         addOne[i] = false
       } else if (i === 'text') {
         addOne[i] = text
+      } else if (i === 'score') {
+        addOne[i] = 0
       }
     }
     let myoptionList = cloneDeep(optionList.value)

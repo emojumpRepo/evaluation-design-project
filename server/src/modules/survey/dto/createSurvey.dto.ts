@@ -38,6 +38,9 @@ export class CreateSurveyDto {
   @ApiProperty({ description: '描述配置', required: false })
   descriptionConfig?: any;
 
+  @ApiProperty({ description: '皮肤配置', required: false })
+  skinConfig?: any;
+
   static validate(data) {
     return Joi.object({
       title: Joi.string().required(),
@@ -63,6 +66,7 @@ export class CreateSurveyDto {
       questionList: Joi.allow(null),
       pageConf: Joi.array().items(Joi.number()).allow(null),
       descriptionConfig: Joi.allow(null),
+      skinConfig: Joi.allow(null),
     }).validate(data);
   }
 }

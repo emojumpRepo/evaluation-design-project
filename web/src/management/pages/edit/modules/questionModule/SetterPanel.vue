@@ -66,7 +66,7 @@ watch(
 
 <style lang="scss" scoped>
 .setter-wrapper {
-  width: 360px;
+  width: 28vw;
   height: 100%;
   overflow-x: hidden;
   overflow-y: auto;
@@ -99,7 +99,7 @@ watch(
   }
 
   :deep(.el-tabs) {
-    width: 360px;
+    width: 100%;
     height: 100%;
     border: none;
 
@@ -109,11 +109,13 @@ watch(
 
     .el-tabs__content {
       flex: 1;
+      overflow-x: auto;
       overflow-y: auto;
       padding: 0;
 
       .config-form {
         padding: 30px 20px 50px 20px;
+        min-width: 440px;
       }
     }
   }

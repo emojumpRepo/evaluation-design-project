@@ -38,4 +38,16 @@ export enum QUESTION_TYPE {
    * 多级联动
    */
   CASCADER = 'cascader',
+  /**
+   * 下拉单选
+   */
+  SELECT = 'select',
+  /**
+   * 下拉多选
+   */
+  SELECT_MULTIPLE = 'select-multiple',
+  /**
+   * 内联填空
+   */
+  INLINE_FORM = 'inline-form',
 }

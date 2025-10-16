@@ -30,6 +30,16 @@ onMounted(() => {
   
   // 只在有redirect参数时使用缓存机制
   const redirect = route.query.redirect as string
+  // 显隐控制词（支持 controlWords 或 cw 参数，逗号分隔）
+  const cwParam = (route.query.controlWords as string) || (route.query.cw as string)
+  const parseCw = (val) => {
+    if (!val) return []
+    return val
+      .split(',')
+      .map((s) => decodeURIComponent(s.trim()))
+      .filter((s) => !!s)
+  }
+  const cwList = parseCw(cwParam)
   const sessionKey = `survey_params_${surveyId}`
   
   if (redirect) {
@@ -47,6 +57,7 @@ onMounted(() => {
       surveyStore.setQuestionId(params.questionId)
       surveyStore.setTenantId(params.tenantId)
       surveyStore.setRedirectUrl(params.redirect)
+      surveyStore.setControlWords(params.controlWords || [])
       console.log('使用缓存的参数:', params)
       getDetail(surveyId)
     } else {
@@ -66,7 +77,8 @@ onMounted(() => {
         questionId: questionId || '',
         tenantId: tenantId || '',
         redirect: redirect || '',
-        timestamp: timestamp || Date.now().toString()
+        timestamp: timestamp || Date.now().toString(),
+        controlWords: cwList
       }
       sessionStorage.setItem(sessionKey, JSON.stringify(params))
       console.log('已缓存参数到sessionStorage:', params)
@@ -78,6 +90,7 @@ onMounted(() => {
       surveyStore.setAssessmentNo(params.assessmentNo)
       surveyStore.setQuestionId(params.questionId)
       surveyStore.setRedirectUrl(params.redirect)
+      surveyStore.setControlWords(params.controlWords || [])
       console.log('已设置参数到store')
       
       // 清理URL参数，跳转到干净的URL
@@ -111,6 +124,7 @@ onMounted(() => {
     surveyStore.setQuestionId(questionId || '')
     surveyStore.setTenantId(tenantId || '')
     surveyStore.setRedirectUrl('')
+    surveyStore.setControlWords(cwList)
     
     // 直接加载问卷，保持URL参数不变
     getDetail(surveyId)

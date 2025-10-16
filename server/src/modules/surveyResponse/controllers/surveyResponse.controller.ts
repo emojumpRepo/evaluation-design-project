@@ -315,13 +315,84 @@ export class SurveyResponseController {
         .trim();
     }
     const result = [];
-    dataList.forEach((questionItem, idx) => {
+    let questionIndex = 1; // 题目序号计数器
+    dataList.forEach((questionItem) => {
+      // 跳过描述组件，不计入结果
+      if (questionItem.type === 'description') {
+        return;
+      }
       const userValue = formValues[questionItem.field];
       let answerText: string | string[] = '';
       let scoreTotal = 0;
-      const titleText = stripHtmlTags(questionItem.title);
+      let titleText = stripHtmlTags(questionItem.title);
+
       if (userValue === undefined || userValue === null || userValue === '') {
         answerText = '';
+      } else if (questionItem.type === QUESTION_TYPE.SELECT) {
+        // 下拉单选: answer为字符串
+        if (
+          Array.isArray(questionItem.options) &&
+          questionItem.options.length > 0
+        ) {
+          const option = questionItem.options.find((opt) => opt.hash === userValue);
+          answerText = option ? stripHtmlTags(option.text) : stripHtmlTags(String(userValue));
+          const num = Number(option?.score);
+          scoreTotal = Number.isFinite(num) ? num : 0;
+        } else {
+          answerText = stripHtmlTags(String(userValue));
+        }
+      } else if (questionItem.type === QUESTION_TYPE.SELECT_MULTIPLE) {
+        // 下拉多选: answer为字符串数组
+        if (
+          Array.isArray(userValue) &&
+          Array.isArray(questionItem.options) &&
+          questionItem.options.length > 0
+        ) {
+          const optionScoreMap = {} as Record<string, number>;
+          questionItem.options.forEach((opt) => {
+            const num = Number(opt?.score);
+            optionScoreMap[opt.hash] = Number.isFinite(num) ? num : 0;
+          });
+          answerText = userValue.map((hash) => {
+            const option = questionItem.options.find((opt) => opt.hash === hash);
+            return option ? stripHtmlTags(option.text) : stripHtmlTags(String(hash));
+          });
+          scoreTotal = userValue.reduce(
+            (sum, hash) => sum + (optionScoreMap[hash] || 0),
+            0,
+          );
+        } else {
+          answerText = Array.isArray(userValue)
+            ? userValue.map((v) => stripHtmlTags(String(v)))
+            : [stripHtmlTags(String(userValue))];
+        }
+      } else if (questionItem.type === QUESTION_TYPE.INLINE_FORM) {
+        // 内联填空: content作为title，答案根据field数量处理
+        if (questionItem.content) {
+          // 使用content替换placeholders为{{answer}}
+          titleText = stripHtmlTags(questionItem.content).replace(
+            /\{\{(input|select):[^}]+\}\}/g,
+            '{{answer}}'
+          );
+        }
+
+        if (typeof userValue === 'object' && userValue !== null) {
+          const fieldValues = Object.values(userValue).filter(
+            (v) => v !== undefined && v !== null && v !== ''
+          );
+          if (fieldValues.length === 1) {
+            // 单个field: answer为字符串
+            answerText = stripHtmlTags(String(fieldValues[0]));
+          } else if (fieldValues.length > 1) {
+            // 多个field: answer为字符串数组，按顺序保存field的值
+            answerText = fieldValues.map((v) => stripHtmlTags(String(v)));
+          } else {
+            answerText = '';
+          }
+        } else {
+          // 兼容旧数据（字符串类型）
+          answerText = stripHtmlTags(String(userValue));
+        }
       } else if (
         Array.isArray(questionItem.options) &&
         questionItem.options.length > 0
@@ -342,7 +413,7 @@ export class SurveyResponseController {
             inputValue !== null &&
             inputValue !== ''
           ) {
-            return `${baseText}（${stripHtmlTags(inputValue)}）`;
+            return `${baseText}{{${stripHtmlTags(inputValue)}}}`;
           }
           return baseText;
         };
@@ -380,7 +451,7 @@ export class SurveyResponseController {
       result.push({
         title: titleText,
         answer: answerText,
-        index: idx + 1,
+        index: questionIndex++, // 使用独立的题目计数器并递增
         score: scoreTotal,
       });
     });
@@ -762,9 +833,11 @@ export class SurveyResponseController {
       calculationResult,
     } = params;
 
-    // 格式化题目和答案数据
+    // 格式化题目和答案数据，过滤掉描述组件
     const dataList = responseSchema.code.dataConf.dataList;
-    const questions = dataList.map((questionItem) => {
+    const questions = dataList
+      .filter((questionItem) => questionItem.type !== 'description') // 过滤掉描述组件
+      .map((questionItem) => {
       const userValue = formValues[questionItem.field];
       const questionData = {
         questionId: questionItem.field,

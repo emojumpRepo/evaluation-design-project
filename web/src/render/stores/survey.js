@@ -42,6 +42,7 @@ export const useSurveyStore = defineStore('survey', () => {
   const tenantId = ref('') // 租户id
   const questionId = ref('') // 问卷id
   const redirectUrl = ref('') // 完成后重定向地址
+  const controlWords = ref([]) // 显隐控制词
 
   const router = useRouter()
   const questionStore = useQuestionStore()
@@ -81,6 +82,17 @@ export const useSurveyStore = defineStore('survey', () => {
 
   const setRedirectUrl = (data) => {
     redirectUrl.value = data
+  }
+  const setControlWords = (data) => {
+    controlWords.value = Array.isArray(data) ? data : []
+    // 若已初始化formValues，同步注入运行时事实
+    try {
+      if (formValues.value) {
+        formValues.value['__controlWords'] = controlWords.value
+      }
+    } catch (e) {
+      // ignore
+    }
   }
 
   const getEncryptInfo = async () => {
@@ -169,6 +181,15 @@ export const useSurveyStore = defineStore('survey', () => {
     formValues.value = _formValues
     whiteData.value = option.whiteData
     pageConf.value = option.pageConf
+
+    // 注入显隐控制词到事实对象
+    try {
+      if (controlWords.value && controlWords.value.length) {
+        formValues.value['__controlWords'] = controlWords.value
+      }
+    } catch (e) {
+      // ignore
+    }
 
     questionStore.initOptionCountInfo()
 
@@ -334,6 +355,7 @@ export const useSurveyStore = defineStore('survey', () => {
     questionId,
     tenantId,
     redirectUrl,
+    controlWords,
     initSurvey,
     changeData,
     setWhiteData,
@@ -345,6 +367,7 @@ export const useSurveyStore = defineStore('survey', () => {
     setQuestionId,
     setTenantId,
     setRedirectUrl,
+    setControlWords,
     getEncryptInfo,
     showLogicEngine,
     initShowLogicEngine,

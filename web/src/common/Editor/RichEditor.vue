@@ -49,6 +49,9 @@ const mode = 'simple'
 const toolbarConfig = computed(() => {
   const config = {
     toolbarKeys: [
+      'fontSize', // 字号
+      'justifyLeft', // 左对齐
+      'justifyCenter', // 居中
       'color', // 字体色
       'bgColor', // 背景色
       'bold',
@@ -85,6 +88,21 @@ editorConfig.MENU_CONF['uploadImage'] = {
     const url = res.data.url
     insertFn(url, '', '')
   }
+}
+
+// 字号选项
+editorConfig.MENU_CONF['fontSize'] = {
+  // 常用字号，单位 px，后续会在保存时按需被 replacePxWithRem 转换
+  fontSizeList: [
+    '12px',
+    '14px',
+    '16px',
+    '18px',
+    '20px',
+    '24px',
+    '28px',
+    '32px'
+  ]
 }
 
 const setHtml = (newHtml) => {

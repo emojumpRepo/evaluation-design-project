@@ -65,6 +65,47 @@ export function numberMaxValidator(value, numberRangeMax) {
   return ''
 }
 
+// 从inline-form的content中解析出所有field名称及其配置
+const parseInlineFormFields = (content) => {
+  if (!content) return []
+
+  const fields = []
+  const inputRegex = /\{\{input:([^:}]+):([^:}]*):([^:}]*):([^:}]*):([^:}]*):([^:}]*)\}\}/g
+  const selectRegex = /\{\{select:([^:}]+):/g
+
+  let match
+  // 解析input字段：{{input:fieldName:placeholder:inputType:min:max:step}}
+  while ((match = inputRegex.exec(content)) !== null) {
+    const fieldName = match[1].trim()
+    const inputType = match[3].trim() || 'text'
+    const min = match[4] && match[4].trim() !== '' ? parseFloat(match[4].trim()) : undefined
+    const max = match[5] && match[5].trim() !== '' ? parseFloat(match[5].trim()) : undefined
+
+    if (fieldName && !fields.some(f => f.name === fieldName)) {
+      fields.push({
+        name: fieldName,
+        type: 'input',
+        inputType: inputType,
+        min: min,
+        max: max
+      })
+    }
+  }
+
+  // 解析select字段
+  while ((match = selectRegex.exec(content)) !== null) {
+    const fieldName = match[1].trim()
+    if (fieldName && !fields.some(f => f.name === fieldName)) {
+      fields.push({
+        name: fieldName,
+        type: 'select'
+      })
+    }
+  }
+
+  return fields
+}
+
 // 根据提醒和题目的配置，生成本题的校验规则
 export function generateValidArr(
   isRequired,
@@ -73,13 +114,53 @@ export function generateValidArr(
   textRangeMin,
   type,
   numberRangeMin,
-  numberRangeMax
+  numberRangeMax,
+  content
 ) {
   const validArr = []
   const isInput = INPUT.indexOf(type) !== -1
+  const isInlineForm = type === QUESTION_TYPE.INLINE_FORM
+
   if (isRequired || valid === '*') {
+    // 内联填空的必填校验：检查Object中所有field是否都填写
+    if (isInlineForm) {
+      validArr.push({
+        required: true,
+        validator(rule, value, callback) {
+          let errors = []
+          let tip = ''
+
+          // 从content中解析出所有应该存在的field
+          const requiredFields = parseInlineFormFields(content)
+
+          // value应该是一个Object，例如 {name: '张三', age: '18'}
+          if (!value || typeof value !== 'object') {
+            tip = '此项未填，请填写完整'
+          } else if (requiredFields.length === 0) {
+            // 如果没有解析出任何field，说明配置有问题
+            tip = '此项未填，请填写完整'
+          } else {
+            // 检查所有required fields是否都已填写
+            const hasEmpty = requiredFields.some(fieldConfig => {
+              const val = value[fieldConfig.name]
+              return val === undefined || val === null || val === '' ||
+                     (typeof val === 'string' && val.trim() === '')
+            })
+
+            if (hasEmpty) {
+              tip = '此项未填，请填写完整'
+            }
+          }
+
+          if (tip) {
+            errors = [tip]
+          }
+          callback(errors)
+        }
+      })
+    }
     // 输入框的必填校验做trim
-    if (!isInput) {
+    else if (!isInput) {
       validArr.push({
         required: true,
         message: '此项未填，请填写完整'
@@ -179,6 +260,52 @@ export function generateValidArr(
     })
   }
 
+  // inline-form的数字输入框范围校验
+  if (isInlineForm && content) {
+    const fields = parseInlineFormFields(content)
+    fields.forEach(fieldConfig => {
+      if (fieldConfig.type === 'input' && fieldConfig.inputType === 'number') {
+        // 添加最小值校验
+        if (fieldConfig.min !== undefined) {
+          validArr.push({
+            validator(rule, value, callback) {
+              let errors = []
+              if (value && typeof value === 'object') {
+                const fieldValue = value[fieldConfig.name]
+                if (fieldValue !== undefined && fieldValue !== null && fieldValue !== '') {
+                  const tip = numberMinValidator(fieldValue, fieldConfig.min)
+                  if (tip) {
+                    errors = [tip]
+                  }
+                }
+              }
+              callback(errors)
+            }
+          })
+        }
+
+        // 添加最大值校验
+        if (fieldConfig.max !== undefined) {
+          validArr.push({
+            validator(rule, value, callback) {
+              let errors = []
+              if (value && typeof value === 'object') {
+                const fieldValue = value[fieldConfig.name]
+                if (fieldValue !== undefined && fieldValue !== null && fieldValue !== '') {
+                  const tip = numberMaxValidator(fieldValue, fieldConfig.max)
+                  if (tip) {
+                    errors = [tip]
+                  }
+                }
+              }
+              callback(errors)
+            }
+          })
+        }
+      }
+    })
+  }
+
   return validArr
 }
 
@@ -221,11 +348,12 @@ export default function (questionConfig) {
       isRequired,
       textRange,
       numberRange,
-      rangeConfig
+      rangeConfig,
+      content
     } = current
     const othersKeyMap = generateOthersKeyMap(current)
-    // 部分题目不校验
-    if (valid === '0' || /mobileHidden|section|hidden/.test(type)) {
+    // 部分题目不校验（包括描述组件）
+    if (valid === '0' || /mobileHidden|section|hidden/.test(type) || type === 'description') {
       return pre
     }
 
@@ -241,7 +369,8 @@ export default function (questionConfig) {
       textRangeMin,
       type,
       numberRangeMin,
-      numberRangeMax
+      numberRangeMax,
+      content
     )
 
     validMap = { [field]: validArr }

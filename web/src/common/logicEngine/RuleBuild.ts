@@ -11,6 +11,8 @@ export class ConditionNode {
   public field: string = ''
   public operator: Operator = Operator.Include
   public value: FieldTypes = []
+  public groupId?: number
+  public groupComparor?: 'and' | 'or'
   constructor(field: string = '', operator: Operator = Operator.Include, value: FieldTypes = []) {
     this.field = field
     this.operator = operator
@@ -33,6 +35,10 @@ export class RuleNode {
   conditions: ConditionNode[] = []
   scope: string = Scope.Question
   target: string = ''
+  // 条件关系：and/ or（默认 and）
+  comparor: 'and' | 'or' = 'and'
+  // 条件之间的连接符（按顺序，长度=conditions.length-1），允许分别设置
+  joins: Array<'and' | 'or'> = []
   constructor(target: string = '', scope: string = Scope.Question, id?: string) {
     this.id = id || generateID(PrefixID.Rule)
     this.scope = scope
@@ -76,11 +82,15 @@ export class RuleBuild {
       return {
         target: rule.target,
         scope: rule.scope,
+        comparor: rule.comparor,
+        joins: rule.joins,
         conditions: rule.conditions.map((condition) => {
           return {
             field: condition.field,
             operator: condition.operator,
-            value: condition.value
+            value: condition.value,
+            groupId: condition.groupId,
+            groupComparor: condition.groupComparor
           }
         })
       }
@@ -90,11 +100,19 @@ export class RuleBuild {
     this.rules = []
     if (ruleConf instanceof Array) {
       ruleConf.forEach((rule: any) => {
-        const { scope, target } = rule
+        const { scope, target, comparor, joins } = rule
         const ruleNode = new RuleNode(target, scope)
+        if (comparor === 'or' || comparor === 'and') {
+          ruleNode.comparor = comparor
+        }
+        if (Array.isArray(joins)) {
+          ruleNode.joins = joins.filter((j: any) => j === 'and' || j === 'or')
+        }
         rule.conditions.forEach((condition: any) => {
-          const { field, operator, value } = condition
+          const { field, operator, value, groupId, groupComparor } = condition
           const conditionNode = new ConditionNode(field, operator, value)
+          conditionNode.groupId = typeof groupId === 'number' ? groupId : undefined
+          conditionNode.groupComparor = groupComparor === 'or' ? 'or' : (groupComparor === 'and' ? 'and' : undefined)
           ruleNode.addCondition(conditionNode)
         })
         this.addRule(ruleNode)
@@ -131,11 +149,29 @@ export const ruleSchema = yup.array().of(
   yup.object({
     target: yup.string().required(),
     scope: yup.string().required(),
+    comparor: yup.string().oneOf(['and', 'or']).notRequired(),
+    joins: yup.array().of(yup.string().oneOf(['and', 'or'])).notRequired(),
     conditions: yup.array().of(
       yup.object({
         field: yup.string().required(),
         operator: yup.string().required(),
-        value: yup.array().of(yup.string().required())
+        value: yup.mixed().test('value-shape', 'invalid value', function (v) {
+          const { operator } = this.parent as any
+          if (operator === 'score_between') {
+            if (v && typeof v === 'object') {
+              const fieldsOk = Array.isArray((v as any).fields)
+                && (v as any).fields.every((s: any) => typeof s === 'string')
+              const minOk = (typeof (v as any).min === 'number') || typeof (v as any).min === 'undefined'
+              const maxOk = (typeof (v as any).max === 'number') || typeof (v as any).max === 'undefined'
+              return fieldsOk && minOk && maxOk
+            }
+            return false
+          }
+          // 默认要求为字符串数组
+          return Array.isArray(v) && v.every((s) => typeof s === 'string')
+        }),
+        groupId: yup.number().notRequired(),
+        groupComparor: yup.string().oneOf(['and', 'or']).notRequired()
       })
     )
   })
