@@ -151,7 +151,7 @@ const ERROR_MESSAGES = {
   FILE_SIZE_OVER_2MB_ERROR: "文件大小超出限制，请重新上传！", 
   MERGED_CELLS_ERROR: "文件格式不正确，请重新上传！",
   ROW_COL_LIMIT_ERROR: "文件所含数据超出限制，请重新上传！", 
-  HEADER_INCORRECT_ERROR:"第一列标题必须为[题目标题]，第二列标题必须为[题型]，第三列标题必须为[选项内容]。"
+  HEADER_INCORRECT_ERROR:"表头格式不正确。支持两种格式：\n1. 新格式：题目顺序、题目标题、题型、选项内容...\n2. 旧格式：题目标题、题型、选项内容..."
 };
 
 const showErrorDialog = (message: string) => {
@@ -217,12 +217,15 @@ const excelToSchema = (excelQuestions: Array<{
   showType?: string,
   showSpliter?: string,
   layout?: string,
-  quotaDisplay?: string
+  horizontalColumns?: string,
+  quotaDisplay?: string,
+  content?: string,
+  questionOrder?: string
 }>) => {
   const questions = []
 
   for (const excelQuestion of excelQuestions) {
-    const { title, type, options, scores, others, mustOthers, othersKey, placeholderDesc, isRequired, showIndex, showType, showSpliter, layout, quotaDisplay } = excelQuestion
+    const { title, type, options, scores, others, mustOthers, othersKey, placeholderDesc, isRequired, showIndex, showType, showSpliter, layout, horizontalColumns, quotaDisplay, content } = excelQuestion
 
     // 检查题型是否支持
     if (!textTypeMap[type]) {
@@ -240,6 +243,7 @@ const excelToSchema = (excelQuestions: Array<{
     question.showType = showType === '是' || showType === 'true' || showType === '1';
     question.showSpliter = showSpliter === '是' || showSpliter === 'true' || showSpliter === '1';
     question.layout = layout || 'vertical';
+    question.horizontalColumns = parseInt(horizontalColumns || '2') || 2;
     question.quotaDisplay = quotaDisplay === '是' || quotaDisplay === 'true' || quotaDisplay === '1';
 
     switch (type) {
@@ -247,30 +251,44 @@ const excelToSchema = (excelQuestions: Array<{
       case "多行输入框":
       case "评分":
       case "多级联动":
-      case "描述文本":
         questions.push(question);
         break;
+      case "描述文本": {
+        // 描述文本内容优先使用content字段，兼容旧版本的options字段
+        question.content = decodeHtmlEntities(content || options || '')
+        questions.push(question);
+        break;
+      }
+      case "内联填空": {
+        // 内联填空题干模板优先使用content字段，兼容旧版本的options字段
+        question.content = decodeHtmlEntities(content || options || '')
+        questions.push(question);
+        break;
+      }
 
       case "单选":
       case "多选":
       case "投票":
-      case "判断题": {
+      case "判断题":
+      case "下拉单选":
+      case "下拉多选": {
         if (options && options.trim()) {
-          // 处理分号分割的选项格式
+          // 处理分号分割的选项格式（兼容中文分号 '；' 与英文分号 ';'）
           // 先解码HTML实体
           const decodedOptions = decodeHtmlEntities(options);
-          
-          // 更智能的分割：只在分号前后都有内容时才分割
-          const optionTexts = decodedOptions
-            .split(';')
-            .map(text => text.trim())
-            .filter(text => text.length > 0);
-          
-          const optionScores = scores ? scores.split(';').map(score => score.trim()) : [];
-          const othersOptions = others ? others.split(';').map(text => text.trim()).filter(Boolean) : [];
-          const mustOthersOptions = mustOthers ? mustOthers.split(';').map(text => text.trim()) : [];
-          const othersKeyOptions = othersKey ? othersKey.split(';').map(text => text.trim()) : [];
-          const placeholderDescOptions = placeholderDesc ? placeholderDesc.split(';').map(text => text.trim()) : [];
+
+          const splitSmart = (val?: string) =>
+            (val || '')
+              .split(/[；;]+/)
+              .map((s) => s.trim())
+              .filter((s) => s.length > 0)
+
+          const optionTexts = splitSmart(decodedOptions)
+          const optionScores = splitSmart(scores)
+          const othersOptions = splitSmart(others)
+          const mustOthersOptions = splitSmart(mustOthers)
+          const othersKeyOptions = splitSmart(othersKey)
+          const placeholderDescOptions = splitSmart(placeholderDesc)
           
           question.options = optionTexts.map((text, index) => {
             // 检查是否是"其他"选项
@@ -365,13 +383,15 @@ const submitUpload = async () => {
       const excelQuestions = response.data.data.questions;
       const pageConf = response.data.data.pageConf || [];
       const descriptionConfig = response.data.data.descriptionConfig || {};
+      const skinConfig = response.data.data.skinConfig || {};
       const questionList = excelToSchema(excelQuestions);
 
       console.log('ExcelImport - 解析的分页配置:', pageConf);
       console.log('ExcelImport - 解析的描述配置:', descriptionConfig);
+      console.log('ExcelImport - 解析的皮肤配置:', skinConfig);
       console.log('ExcelImport - 解析的题目列表:', questionList);
 
-      emit('on-excel-upload-success', questionList, pageConf, descriptionConfig);
+      emit('on-excel-upload-success', questionList, pageConf, descriptionConfig, skinConfig);
 
       resetUpload();
       uploadSuccess.value = true;

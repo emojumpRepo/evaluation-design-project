@@ -47,6 +47,25 @@ export default defineComponent({
         }
       }
     },
+    numberRange: {
+      type: Object,
+      default: () => {
+        return {
+          max: {
+            placeholder: '1000',
+            value: 1000
+          },
+          min: {
+            placeholder: '0',
+            value: 0
+          },
+          step: {
+            placeholder: '1',
+            value: 1
+          }
+        }
+      }
+    },
     valid: {
       type: String,
       default: ''
@@ -106,7 +125,7 @@ export default defineComponent({
     }
   },
   render() {
-    const { focusFlag, getLeftTextNumber, valid, textRange, props } = this
+    const { focusFlag, getLeftTextNumber, valid, textRange, numberRange, props } = this
 
     return (
       <div>
@@ -120,6 +139,9 @@ export default defineComponent({
           textRange={props.textRange}
           maxlength={textRange.max.value}
           minlength={textRange.min.value}
+          min={valid === 'n' ? numberRange.min.value : undefined}
+          max={valid === 'n' ? numberRange.max.value : undefined}
+          step={valid === 'n' ? numberRange.step.value : undefined}
           valid={props.valid}
           readonly={props.readonly}
           onBlur={this.onBlur}

@@ -61,8 +61,7 @@ defineExpose({
 </script>
 <style lang="scss">
 .rule-list {
-  width: 824px;
-  text-align: left;
+  width: 75%;
   margin: 0 auto;
   padding: 12px;
   .add {

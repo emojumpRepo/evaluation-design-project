@@ -27,6 +27,13 @@ export const menuItems = {
     icon: 'tixing-duoxuan',
     title: '多项选择'
   },
+  select: {
+    type: 'select',
+    path: 'SelectModule',
+    snapshot: '/imgs/question-type-snapshot/TgeRDfURJZ1657702220602.webp',
+    icon: 'tixing-xiala',
+    title: '下拉选择'
+  },
   'binary-choice': {
     type: 'binary-choice',
     snapshot: '/imgs/question-type-snapshot/blW8U1ckzd1657702223023.webp',
@@ -62,16 +69,30 @@ export const menuItems = {
     icon: 'cascader-select',
     title: '多级联动'
   },
+  'inline-form': {
+    type: 'inline-form',
+    path: 'InlineFormModule',
+    snapshot: '/imgs/question-type-snapshot/iL84te6xxU1657702189333.webp',
+    icon: 'tixing-danhangshuru',
+    title: '内联填空'
+  },
+  description: {
+    type: 'description',
+    path: 'DescriptionTextModule',
+    snapshot: '/imgs/question-type-snapshot/iL84te6xxU1657702189333.webp',
+    icon: 'tixing-miaoshu',
+    title: '描述文本'
+  },
 }
 
 const menuGroup = [
   {
     title: '输入类题型',
-    questionList: ['text', 'textarea']
+    questionList: ['text', 'textarea', 'inline-form', 'description']
   },
   {
     title: '选择类题型',
-    questionList: ['radio', 'checkbox', 'binary-choice', 'radio-star', 'radio-nps', 'vote']
+    questionList: ['radio', 'checkbox', 'select', 'binary-choice', 'radio-star', 'radio-nps', 'vote']
   }, {
     title: '高级题型',
     questionList: ['cascader']

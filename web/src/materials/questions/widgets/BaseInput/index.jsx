@@ -40,6 +40,18 @@ export default defineComponent({
       type: Number,
       default: 0
     },
+    min: {
+      type: Number,
+      default: undefined
+    },
+    max: {
+      type: Number,
+      default: undefined
+    },
+    step: {
+      type: Number,
+      default: undefined
+    },
     value: {
       type: String,
       default: ''
@@ -82,6 +94,9 @@ export default defineComponent({
           value={this.value}
           maxlength={this.maxlength}
           minlength={this.minlength}
+          min={this.min}
+          max={this.max}
+          step={this.step}
           autocomplete={'off'}
           onInput={this.onInput}
           onBlur={this.onBlur}

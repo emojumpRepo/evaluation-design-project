@@ -3,7 +3,7 @@
     v-if="visibility"
     :moduleConfig="questionConfig"
     :indexNumber="indexNumber"
-    :showTitle="true"
+    :showTitle="questionConfig.showTitle !== false"
     @input="handleInput"
     @change="handleChange"
   ></QuestionRuleContainer>
@@ -76,6 +76,48 @@ const questionConfig = computed(() => {
     moduleConfig.othersValue = unref(othersValue)
   }
 
+  // 选项级显隐（仅同题内规则）：
+  // 1) 同题内：默认隐藏 defaultHidden
+  // 2) 同题内：选中项的 showTargetsWhenSelected 显示优先，其次 hideTargetsWhenSelected 隐藏
+  if (NORMAL_CHOICES.includes(type) && Array.isArray(allOptions) && allOptions.length) {
+    try {
+      // a) 初始状态（不再支持问卷级 option 显隐）：全部不隐藏
+      let nextOptions = allOptions.map((opt) => ({ ...opt, hide: false }))
+
+      // b) 应用默认隐藏
+      nextOptions = nextOptions.map((o) => ({ ...o, hide: o.hide || !!o.defaultHidden }))
+
+      // c) 根据当前选中项的 show/hide 目标进行合并（同题内）
+      const selected = formValues.value[field]
+      const selectedArr = Array.isArray(selected) ? selected : (selected ? [selected] : [])
+      if (selectedArr.length) {
+        const optionMap = new Map(nextOptions.map((o) => [o.hash, o]))
+        const toShow = new Set()
+        const toHide = new Set()
+        selectedArr.forEach((h) => {
+          const opt = optionMap.get(h)
+          if (opt && Array.isArray(opt.showTargetsWhenSelected)) {
+            opt.showTargetsWhenSelected.filter(Boolean).forEach((hh) => toShow.add(hh))
+          }
+          if (opt && Array.isArray(opt.hideTargetsWhenSelected)) {
+            opt.hideTargetsWhenSelected.filter(Boolean).forEach((hh) => toHide.add(hh))
+          }
+        })
+        nextOptions = nextOptions.map((o) => {
+          // 显示优先：若在 toShow 中，则强制显示
+          if (toShow.has(o.hash)) return { ...o, hide: false }
+          // 其次隐藏规则
+          if (toHide.has(o.hash)) return { ...o, hide: true }
+          return o
+        })
+      }
+
+      allOptions = nextOptions
+    } catch (e) {
+      // ignore
+    }
+  }
+
   if (
     RATES.includes(type) &&
     rest?.rangeConfig &&
@@ -105,6 +147,10 @@ const updateFormData = (value) => {
 
 const handleChange = (data) => {
   emit('change', data)
+
+  // 更新formValues
+  surveyStore.changeData(data)
+
   // 处理投票题questionConfig
   if (props.moduleConfig.type === QUESTION_TYPE.VOTE) {
     questionStore.updateVoteData(data)
@@ -114,8 +160,8 @@ const handleChange = (data) => {
   processShowLogicClear()
 
   // 默认开启断点续答：记录内容
-  const formData = updateFormData(data.value)
-  storageAnswer(formData)
+  // 直接使用完整的formValues，包含所有字段和扩展字段
+  storageAnswer(formValues.value)
 }
 
 const handleInput = debounce((e) => {
@@ -138,7 +184,9 @@ const storageAnswer = (formData) => {
 // 显示逻辑：题目是否需要显示
 const logicShow = computed(() => {
   // computed有计算缓存，当match有变化的时候触发重新计算
-  const result = showLogicEngine.value.match(props.moduleConfig.field, 'question', formValues.value)
+  // 传入答案与题目schema供分数合计计算
+  const facts = Object.assign({ __schema: surveyStore?.dataConf?.dataList || [] }, formValues.value)
+  const result = showLogicEngine.value.match(props.moduleConfig.field, 'question', facts)
   return result === undefined ? true : result
 })
 watch(()=> logicShow.value, (value) => {
@@ -253,6 +301,36 @@ watch(
       }
     }
   }
+)
+
+// 当选项被隐藏时，清理当前题目已选择的隐藏选项
+watch(
+  () => {
+    const cfg = questionConfig.value || {}
+    return [cfg?.options, formValues.value[props.moduleConfig.field]]
+  },
+  ([, currVal]) => {
+    try {
+      const { type, field } = props.moduleConfig
+      const options = (questionConfig.value && questionConfig.value.options) || []
+      const hiddenHashes = options.filter((o) => o && o.hide).map((o) => o.hash)
+      if (!hiddenHashes.length) return
+
+      if (type === QUESTION_TYPE.CHECKBOX && Array.isArray(currVal)) {
+        const filtered = currVal.filter((h) => !hiddenHashes.includes(h))
+        if (JSON.stringify(filtered) !== JSON.stringify(currVal)) {
+          surveyStore.changeData({ key: field, value: filtered })
+        }
+      } else if (type !== QUESTION_TYPE.CHECKBOX && typeof currVal === 'string') {
+        if (hiddenHashes.includes(currVal)) {
+          surveyStore.changeData({ key: field, value: '' })
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+  },
+  { deep: true }
 )
 
 // 解析跳转逻辑

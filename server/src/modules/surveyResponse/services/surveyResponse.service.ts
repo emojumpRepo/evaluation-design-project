@@ -135,7 +135,7 @@ export class SurveyResponseService {
         body,
       });
       console.log('sendSurveyAnswer res', res);
-      if (res.code !== 0) {
+      if (!res.success) {
         throw new Error(res.msg);
       }
       return res;

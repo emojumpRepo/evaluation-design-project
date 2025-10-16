@@ -4,6 +4,11 @@ export default function ({ dataConf }) {
   const dataList = dataConf.dataList
   const formValues = {}
   for (const item of dataList) {
+    // 跳过描述组件，不计入提交数据
+    if (item.type === 'description') {
+      continue
+    }
+
     // 题目id
     const key = item.field
     const { extraOptions, options, type, rangeConfig, innerType } = item
@@ -20,6 +25,10 @@ export default function ({ dataConf }) {
     // 题型是多选，或者子题型是多选（innerType是用于投票）
     if (type === QUESTION_TYPE.CHECKBOX || innerType === QUESTION_TYPE.CHECKBOX) {
       value = value ? [value] : []
+    }
+    // 内联填空题需要初始化为对象，因为它存储多个字段值
+    if (type === 'inline-form') {
+      value = {}
     }
     formValues[key] = value
 

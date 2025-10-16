@@ -27,6 +27,7 @@
           :indexNumber="element.indexNumber"
           :isSelected="currentEditOne === element.qIndex"
           :readonly="true"
+          :showTitle="element.showTitle !== false"
           @change="handleChange"
         >
           <template #advancedEdit>

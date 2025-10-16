@@ -74,13 +74,22 @@ export default defineComponent({
       ...this.$props
     }
     const BlockComponent = this.BlockComponent
+    // 内联填空题和描述文本在渲染页面不显示标题，其他题型根据showTitle属性判断
+    const shouldShowTitle = (this.type === 'inline-form' || this.type === 'description')
+      ? false
+      : (this.moduleConfig.showTitle ?? this.showTitle)
+
+    // 内联填空题在渲染页面需要可输入，不使用readonly
+    const componentReadonly = this.type === 'inline-form' ? false : true
+    const isDescription = this.type === 'description'
+
     return (
-      <div class={['question']}>
-        {this.showTitle && <PreviewTitle {...props} />}
+      <div class={['question', isDescription ? 'is-description' : '']}>
+        {shouldShowTitle && <PreviewTitle {...props} />}
         <div class="question-block">
           {this.BlockComponent ? (
             <BlockComponent
-              readonly
+              readonly={componentReadonly}
               {...props}
               onBlur={this.onBlur}
               onFocus={this.onFocus}

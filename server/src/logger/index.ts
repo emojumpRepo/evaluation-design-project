@@ -28,9 +28,16 @@ export class Logger {
             pattern: '%m',
           },
         },
+        out: {
+          type: 'stdout',
+          layout: {
+            type: 'pattern',
+            pattern: '%m',
+          },
+        },
       },
       categories: {
-        default: { appenders: ['app'], level: 'trace' },
+        default: { appenders: ['app', 'out'], level: 'trace' },
       },
     });
     Logger.inited = true;

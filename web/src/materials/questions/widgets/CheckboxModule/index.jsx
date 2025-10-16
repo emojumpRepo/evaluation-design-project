@@ -30,6 +30,10 @@ export default defineComponent({
       type: String,
       default: 'vertical'
     },
+    horizontalColumns: {
+      type: [Number, String],
+      default: 0
+    },
     options: {
       type: Array,
       default: () => []
@@ -56,8 +60,34 @@ export default defineComponent({
       return props.value.length >= +props.maxNum
     })
     const isDisabled = (item) => {
-      const { value } = props
-      return disableState.value && !includes(value, item.hash)
+      const { value, options } = props
+      const selected = Array.isArray(value) ? value : []
+      const optionMap = new Map((options || []).map((o) => [o.hash, o]))
+
+      // 计算某个互斥项的目标集（为空代表与全部其它互斥）
+      const getMutexTargets = (opt) => {
+        if (!opt || !opt.mutex) return []
+        const targets = Array.isArray(opt.mutexTargets) ? opt.mutexTargets.filter(Boolean) : []
+        if (targets.length) return targets
+        // 默认与全部其它选项互斥
+        return (options || []).map((o) => o.hash).filter((h) => h !== opt.hash)
+      }
+      // 判断两者是否互斥（任一一方声明与对方互斥即视为互斥）
+      const isConflicted = (a, b) => {
+        const ao = typeof a === 'string' ? optionMap.get(a) : a
+        const bo = typeof b === 'string' ? optionMap.get(b) : b
+        if (!ao || !bo) return false
+        const aTargets = getMutexTargets(ao)
+        const bTargets = getMutexTargets(bo)
+        return aTargets.includes(bo.hash) || bTargets.includes(ao.hash)
+      }
+
+      // 若当前项与任意已选项互斥，则禁用
+      const conflictedWithSelected = selected.some((sel) => isConflicted(sel, item))
+      if (conflictedWithSelected) return true
+
+      // 数量上限禁用
+      return disableState.value && !includes(selected, item.hash)
     }
     const myOptions = computed(() => {
       const { options } = props
@@ -127,6 +157,7 @@ export default defineComponent({
         onChange={onChange}
         value={value}
         layout={this.layout}
+          columnsPerRow={this.horizontalColumns}
         quotaDisplay={quotaDisplay}
       >
         {{

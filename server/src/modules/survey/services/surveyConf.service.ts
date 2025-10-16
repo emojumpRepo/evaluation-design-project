@@ -30,6 +30,7 @@ export class SurveyConfService {
     code?: any;
     pageConf?: number[];
     descriptionConfig?: any;
+    skinConfig?: any;
   }) {
     const {
       surveyId,
@@ -40,6 +41,7 @@ export class SurveyConfService {
       code,
       pageConf,
       descriptionConfig,
+      skinConfig,
     } = params;
     let schemaData = null;
 
@@ -65,6 +67,10 @@ export class SurveyConfService {
             schemaData.bannerConf = {};
           }
           schemaData.bannerConf.descriptionConfig = descriptionConfig;
+        }
+        if (skinConfig && Object.keys(skinConfig).length > 0) {
+          console.log('设置皮肤配置到schemaData:', skinConfig);
+          schemaData.skinConf = skinConfig;
         }
       } catch (error) {
         throw new HttpException(
@@ -269,6 +275,36 @@ export class SurveyConfService {
           maxNum: item.maxNum,
           options: mapOptions(item.options),
         };
+      case QUESTION_TYPE.SELECT:
+        // 下拉单选
+        return { ...base, options: mapOptions(item.options) };
+      case QUESTION_TYPE.SELECT_MULTIPLE:
+        // 下拉多选
+        return { ...base, options: mapOptions(item.options) };
+      case QUESTION_TYPE.INLINE_FORM:
+        // 内联填空: 使用content作为title，将占位符替换为{{answer}}
+        console.log('INLINE_FORM item:', JSON.stringify({
+          title: item.title,
+          content: item.content,
+          type: item.type
+        }));
+        return {
+          ...base,
+          title: item.content
+            ? this.stripHtml(item.content).replace(
+                /\{\{(input|select):[^}]+\}\}/g,
+                '{{answer}}',
+              )
+            : this.stripHtml(item.title),
+        };
+      case 'description':
+        // 描述文本: 使用content作为title，不替换占位符
+        return {
+          ...base,
+          title: item.content
+            ? item.content
+            : this.stripHtml(item.title),
+        };
       default:
         // 未识别类型，回退到标题+原始类型
         return base;
@@ -288,7 +324,6 @@ export class SurveyConfService {
    * 去除字符串中的 HTML 标签
    */
   private stripHtml(value?: string): string {
-    console.log('stripHtml', value);
     if (!value) return '';
     // 仅移除看起来像 HTML 标签/注释的结构：
     // - 标签以字母开头，如 <b>、</div>、<img ...>

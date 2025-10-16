@@ -1,8 +1,9 @@
 import basicConfig from '@materials/questions/common/config/basicConfig'
+
 const meta = {
-  title: '多选',
-  type: 'checkbox',
-  componentName: 'CheckBoxModule',
+  title: '下拉选择',
+  type: 'select',
+  componentName: 'SelectModule',
   attrs: [
     {
       name: 'field',
@@ -20,7 +21,7 @@ const meta = {
       name: 'type',
       propType: 'String',
       description: '这是用于描述题目类型',
-      defaultValue: 'checkbox'
+      defaultValue: 'select'
     },
     {
       name: 'isRequired',
@@ -52,81 +53,92 @@ const meta = {
       description: '这是用于描述选项',
       defaultValue: [
         {
-          text: '选项1',
+          text: "选项1",
           others: false,
           mustOthers: false,
-          othersKey: '',
-          placeholderDesc: '',
-          hash: '115019'
+          othersKey: "",
+          placeholderDesc: "",
+          hash: "115019",
+          score: 0
         },
         {
-          text: '选项2',
+          text: "选项2",
           others: false,
           mustOthers: false,
-          othersKey: '',
-          placeholderDesc: '',
-          hash: '115020'
+          othersKey: "",
+          placeholderDesc: "",
+          hash: "115020",
+          score: 0
         }
       ]
     },
     {
+      name: 'multiple',
+      propType: Boolean,
+      description: '是否多选',
+      defaultValue: false
+    },
+    {
       name: 'minNum',
       propType: Number,
-      description: '最少选择数',
+      description: '最少选择数(多选时)',
       defaultValue: 0
     },
     {
       name: 'maxNum',
       propType: Number,
-      description: '最多选择数',
+      description: '最多选择数(多选时)',
       defaultValue: 0
     },
     {
-      name: 'layout',
+      name: 'placeholder',
       propType: String,
-      description: '排列方式',
-      defaultValue: 'vertical'
-    },
-    {
-      name: 'horizontalColumns',
-      propType: Number,
-      description: '横排每行列数',
-      defaultValue: 2
+      description: '占位提示文本',
+      defaultValue: '请选择'
     }
   ],
   formConfig: [
     basicConfig,
     {
-      name: 'optionConfig',
-      title: '选项配置',
+      name: 'selectConfig',
+      title: '选择配置',
       type: 'Customed',
       content: [
         {
-          label: '排列方式',
+          label: '选择模式',
           type: 'RadioGroup',
-          key: 'layout',
-          value: 'vertical',
+          key: 'multiple',
+          value: false,
           options: [
             {
-              label: '竖排',
-              value: 'vertical'
+              label: '单选',
+              value: false
             },
             {
-              label: '横排',
-              value: 'horizontal'
-            },
-          ]
+              label: '多选',
+              value: true
+            }
+          ],
+          // 当multiple值改变时,同时更新type字段
+          valueSetter(data) {
+            return [
+              {
+                key: 'multiple',
+                value: data.value
+              },
+              {
+                key: 'type',
+                value: data.value ? 'select-multiple' : 'select'
+              }
+            ]
+          }
         },
         {
-          label: '横排每行列数',
-          type: 'InputNumber',
-          key: 'horizontalColumns',
-          value: 2,
-          min: 2,
-          max: 6,
-          tip: '仅在横排时生效，留空或0为按样式默认',
-          relyFunc: (moduleConfig) => moduleConfig?.layout === 'horizontal',
-          contentClass: 'input-number-config'
+          label: '占位提示',
+          type: 'InputSetter',
+          key: 'placeholder',
+          value: '请选择',
+          placeholder: '请输入占位提示文本'
         },
         {
           label: '至少选择数',
@@ -134,38 +146,25 @@ const meta = {
           key: 'minNum',
           value: 0,
           min: 0,
-          max: moduleConfig => { return  moduleConfig?.maxNum || 0 },
-          contentClass: 'input-number-config'
+          max: (moduleConfig) => { return moduleConfig?.maxNum || 999 },
+          contentClass: 'input-number-config',
+          relyFunc: (moduleConfig) => {
+            return moduleConfig?.multiple === true
+          }
         },
         {
           label: '最多选择数',
           type: 'InputNumber',
           key: 'maxNum',
           value: 0,
-          min: moduleConfig => { return moduleConfig?.minNum || 0 },
-          max: moduleConfig => { return moduleConfig?.options?.length },
-          contentClass: 'input-number-config'
+          min: (moduleConfig) => { return moduleConfig?.minNum || 0 },
+          max: (moduleConfig) => { return moduleConfig?.options?.length || 999 },
+          contentClass: 'input-number-config',
+          relyFunc: (moduleConfig) => {
+            return moduleConfig?.multiple === true
+          }
         }
       ]
-    },
-    {
-      name: 'optionQuota',
-      label: '选项配额',
-      labelStyle: {
-        'font-weight': 'bold'
-      },
-      type: 'QuotaConfig',
-      // 输出转换
-      valueSetter({ options, quotaDisplay}) {
-        return [{
-          key: 'options',
-          value: options
-        },
-        {
-          key: 'quotaDisplay',
-          value: quotaDisplay
-        }]
-      }
     }
   ],
   editConfigure: {
@@ -175,7 +174,7 @@ const meta = {
     optionEditBar: {
       show: true,
       configure: {
-        showOthers: true,
+        showOthers: false,
         showAdvancedConfig: true
       }
     }

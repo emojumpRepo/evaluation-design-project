@@ -8,7 +8,8 @@ export enum Operator {
   Include = 'in',
   Equal = 'eq',
   NotEqual = 'neq',
-  NotInclude = 'nin'
+  NotInclude = 'nin',
+  ScoreBetween = 'score_between'
 }
 
 export enum PrefixID {
@@ -21,7 +22,7 @@ export enum Scope {
   Option = 'option'
 }
 
-export type FieldTypes = string | string[]
+export type FieldTypes = any
 
 // 定义事实对象类型
 export type Fact = {

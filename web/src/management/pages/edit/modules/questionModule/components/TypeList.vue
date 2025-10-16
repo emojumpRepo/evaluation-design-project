@@ -94,8 +94,17 @@ questionLoader.init({
 
 const onQuestionType = ({ type }) => {
   if (type === 'description') {
-    // 处理描述文本组件 - 直接选中，不添加到题目列表
-    setCurrentEditOne('description');
+    // 描述组件：创建新实例并添加到问卷中，但会自动选中以便编辑
+    const newQuestion = createNewQuestion({ type });
+    addQuestion({ question: newQuestion, index: newQuestionIndex.value });
+    setTimeout(() => {
+      const { endIndex } = getSorter();
+      if(endIndex === newQuestionIndex.value) {
+        setCurrentEditOne(endIndex - 1);
+      } else {
+        setCurrentEditOne(newQuestionIndex.value);
+      }
+    });
   } else {
     const newQuestion = createNewQuestion({ type });
     addQuestion({ question: newQuestion, index: newQuestionIndex.value });

@@ -49,8 +49,9 @@ export const getQuestionByType = (type, fields) => {
     questionSchema[element.name] = element.defaultValue
   })
   questionSchema.field = getNewField(fields) // 动态生成题目id
+
+  // 处理选项的hash-id（适用于radio、checkbox、select等题型）
   if ('options' in questionSchema) {
-    // 动态更新选项的hash-id
     const hashList = []
     for (const option of questionSchema.options) {
       const hash = generateHash(hashList)
@@ -74,8 +75,11 @@ export function filterQuestionPreviewData(data, currentEditOne = '') {
       indexNumber: 0,
       qIndex: index
     }
+    // 描述组件不计入题目编号
+    const isDescriptionType = preType === 'description'
+
     // 根据是否展示序号，处理 indexNumber
-    if (newData.showIndex) {
+    if (newData.showIndex && !isDescriptionType) {
       newData.indexNumber = indexNumber
       indexNumber++
     }

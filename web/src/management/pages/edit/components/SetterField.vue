@@ -105,7 +105,6 @@ const normalizationValues = (configList: Array<any> = []) => {
     .filter((item: any) => {
       // 组件组
       if (item.type === 'Customed') {
-        item.content = normalizationValues(item.content)
         return true
       }
 
@@ -119,12 +118,23 @@ const normalizationValues = (configList: Array<any> = []) => {
 
       // 动态显隐设置器
       if (_isFunction(item.relyFunc)) {
-        return item.relyFunc(props.moduleConfig)
+        const result = item.relyFunc(props.moduleConfig)
+        return result
       }
 
       return true
     })
     .map((item: any) => {
+      // 组件组需要递归处理content
+      if (item.type === 'Customed') {
+        const filteredContent = normalizationValues(item.content)
+        return {
+          ...item,
+          content: filteredContent,
+          value: formatValue({ item, moduleConfig: props.moduleConfig })
+        }
+      }
+
       return {
         ...item,
         value: formatValue({ item, moduleConfig: props.moduleConfig }) // 动态赋值

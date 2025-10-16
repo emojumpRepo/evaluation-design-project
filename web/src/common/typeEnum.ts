@@ -10,6 +10,9 @@ export enum QUESTION_TYPE {
   VOTE = 'vote',
   CASCADER = 'cascader',
   DESCRIPTION = 'description',
+  SELECT = 'select',
+  SELECT_MULTIPLE = 'select-multiple',
+  INLINE_FORM = 'inline-form',
 }
 
 // 题目类型标签映射对象
@@ -24,10 +27,13 @@ export const typeTagLabels: Record<QUESTION_TYPE, string> = {
   [QUESTION_TYPE.VOTE]: '投票',
   [QUESTION_TYPE.CASCADER]: '多级联动',
   [QUESTION_TYPE.DESCRIPTION]: '描述文本',
+  [QUESTION_TYPE.SELECT]: '下拉单选',
+  [QUESTION_TYPE.SELECT_MULTIPLE]: '下拉多选',
+  [QUESTION_TYPE.INLINE_FORM]: '内联填空',
 }
 
 // 输入类题型
-export const INPUT = [QUESTION_TYPE.TEXT, QUESTION_TYPE.TEXTAREA, QUESTION_TYPE.DESCRIPTION]
+export const INPUT = [QUESTION_TYPE.TEXT, QUESTION_TYPE.TEXTAREA, QUESTION_TYPE.DESCRIPTION, QUESTION_TYPE.INLINE_FORM]
 
 // 选择类题型分类
 export const NORMAL_CHOICES = [QUESTION_TYPE.RADIO, QUESTION_TYPE.CHECKBOX]
