@@ -55,10 +55,13 @@ interface ExcelQuestion {
   othersKey?: string;
   placeholderDesc?: string;
   layout?: string;
+  horizontalColumns?: string;
   quotaDisplay?: string;
   showIndex?: string;
   showType?: string;
   showSpliter?: string;
+  content?: string; // 描述文本和内联填空的内容
+  questionOrder?: string; // 题目在问卷中的顺序
 }
 
 @ApiTags('survey')
@@ -117,6 +120,7 @@ export class SurveyController {
       isCollaborated,
       pageConf,
       descriptionConfig,
+      skinConfig,
     } = value;
 
     let surveyType = '',
@@ -151,6 +155,7 @@ export class SurveyController {
       questionList,
       pageConf,
       descriptionConfig,
+      skinConfig,
     });
     return {
       code: 200,
@@ -655,6 +660,12 @@ export class SurveyController {
       const allQuestions: ExcelQuestion[] = [];
       let pageConf: number[] = [];
       let descriptionConfig: any = {};
+      let skinConfig: any = {
+        bannerConfig: {},
+        themeConf: {
+          colorConf: {}
+        }
+      };
 
       // 验证每个文件
       for (const file of files) {
@@ -724,6 +735,47 @@ export class SurveyController {
           );
         }
 
+        // 解析皮肤设置
+        if (workbook.SheetNames.includes('皮肤设置')) {
+          console.log('getExcelQuestions - 找到皮肤设置表');
+          const skinSheet = workbook.Sheets['皮肤设置'];
+          const skinData = XLSX.utils.sheet_to_json(skinSheet);
+
+          console.log('getExcelQuestions - 皮肤设置数据:', skinData);
+
+          skinData.forEach((row: any) => {
+            console.log('getExcelQuestions - 处理皮肤设置行:', row);
+            const configItem = row.配置项;
+            const configValue = row.配置值;
+            
+            if (configItem && configValue) {
+              switch (configItem) {
+                case '头图链接':
+                  skinConfig.bannerConfig.bannerImg = configValue;
+                  break;
+                case '品牌Logo':
+                  skinConfig.bannerConfig.logoImg = configValue;
+                  break;
+                case '主题色':
+                  skinConfig.themeConf.colorConf.themeColor = configValue;
+                  break;
+                case '提交按钮颜色':
+                  skinConfig.themeConf.colorConf.submitBtnColor = configValue;
+                  break;
+                case '背景色':
+                  skinConfig.themeConf.colorConf.backgroundColor = configValue;
+                  break;
+                case '内容区背景色':
+                  skinConfig.themeConf.colorConf.contentBackgroundColor = configValue;
+                  break;
+              }
+              console.log('getExcelQuestions - 解析的皮肤配置:', configItem, configValue);
+            }
+          });
+        } else {
+          console.log('getExcelQuestions - 未找到皮肤设置表，使用默认皮肤配置');
+        }
+
         // 解析题目数据
         const questions = this.parseExcelFile(file);
         allQuestions.push(...questions);
@@ -746,6 +798,7 @@ export class SurveyController {
           questions: allQuestions,
           pageConf: pageConf,
           descriptionConfig: descriptionConfig,
+          skinConfig: skinConfig,
         },
       };
     } catch (error) {
@@ -848,6 +901,53 @@ export class SurveyController {
         console.log('未找到描述配置表，可用工作表:', workbook.SheetNames);
       }
 
+      // 解析皮肤设置
+      let skinConfig: any = {
+        bannerConfig: {},
+        themeConf: {
+          colorConf: {}
+        }
+      };
+      if (workbook.SheetNames.includes('皮肤设置')) {
+        console.log('找到皮肤设置表');
+        const skinSheet = workbook.Sheets['皮肤设置'];
+        const skinData = XLSX.utils.sheet_to_json(skinSheet);
+
+        console.log('皮肤设置数据:', skinData);
+
+        skinData.forEach((row: any) => {
+          console.log('处理皮肤设置行:', row);
+          const configItem = row.配置项;
+          const configValue = row.配置值;
+          
+          if (configItem && configValue) {
+            switch (configItem) {
+              case '头图链接':
+                skinConfig.bannerConfig.bannerImg = configValue;
+                break;
+              case '品牌Logo':
+                skinConfig.bannerConfig.logoImg = configValue;
+                break;
+              case '主题色':
+                skinConfig.themeConf.colorConf.themeColor = configValue;
+                break;
+              case '提交按钮颜色':
+                skinConfig.themeConf.colorConf.submitBtnColor = configValue;
+                break;
+              case '背景色':
+                skinConfig.themeConf.colorConf.backgroundColor = configValue;
+                break;
+              case '内容区背景色':
+                skinConfig.themeConf.colorConf.contentBackgroundColor = configValue;
+                break;
+            }
+            console.log('解析的皮肤配置:', configItem, configValue);
+          }
+        });
+      } else {
+        console.log('未找到皮肤设置表，使用默认皮肤配置');
+      }
+
       // 解析题目数据
       const questions = this.parseExcelFile(file);
 
@@ -865,6 +965,9 @@ export class SurveyController {
           投票: 'vote',
           多级联动: 'cascader',
           描述文本: 'description',
+          下拉单选: 'select',
+          下拉多选: 'select-multiple',
+          内联填空: 'inline-form',
         };
 
         const question: any = {
@@ -889,11 +992,12 @@ export class SurveyController {
           title: excelQuestion.title,
           placeholder: excelQuestion.placeholder || '',
           checked: false,
-          minNum: excelQuestion.minNum || 0,
-          maxNum: excelQuestion.maxNum || 0,
+          minNum: parseInt(excelQuestion.minNum) || 0,
+          maxNum: parseInt(excelQuestion.maxNum) || 0,
           star: 0,
           placeholderDesc: excelQuestion.placeholderDesc || '',
           layout: excelQuestion.layout || 'vertical',
+          horizontalColumns: parseInt(excelQuestion.horizontalColumns) || 2,
           quotaDisplay:
             excelQuestion.quotaDisplay === '是' ||
             excelQuestion.quotaDisplay === 'true' ||
@@ -903,6 +1007,11 @@ export class SurveyController {
             children: [],
           },
         };
+
+        // 处理描述文本和内联填空的内容
+        if (question.type === 'description' || question.type === 'inline-form') {
+          question.content = excelQuestion.content || excelQuestion.options || '';
+        }
 
         // 处理选项
         if (excelQuestion.options) {
@@ -1004,6 +1113,7 @@ export class SurveyController {
 
       console.log('创建问卷配置，分页配置:', pageConf);
       console.log('创建问卷配置，描述配置:', descriptionConfig);
+      console.log('创建问卷配置，皮肤配置:', skinConfig);
       await this.surveyConfService.createSurveyConf({
         surveyId: surveyMetaResult._id.toString(),
         surveyType: createSurveyDto.surveyType,
@@ -1012,6 +1122,7 @@ export class SurveyController {
         questionList: dataList,
         pageConf: pageConf,
         descriptionConfig: descriptionConfig,
+        skinConfig: skinConfig,
       });
 
       return {
@@ -1082,9 +1193,15 @@ export class SurveyController {
       return { errorType: '' };
     }
 
-    // 基本格式检查：至少需要题目标题、题型、选项内容
-    const isValidFormat =
+    // 基本格式检查：支持新旧两种格式
+    // 新格式：题目顺序、题目标题、题型、选项内容
+    // 旧格式：题目标题、题型、选项内容
+    const isNewFormat = 
+      headerA1 === '题目顺序' && headerB1 === '题目标题' && headerC1 === '题型';
+    const isOldFormat =
       headerA1 === '题目标题' && headerB1 === '题型' && headerC1 === '选项内容';
+    
+    const isValidFormat = isNewFormat || isOldFormat;
 
     if (!isValidFormat) {
       console.log('Header format validation failed:', {
@@ -1109,9 +1226,44 @@ export class SurveyController {
       workbook.SheetNames[0];
     const worksheet = workbook.Sheets[sheetName];
 
-    // 将工作表转换为JSON数组
-    const jsonData = XLSX.utils.sheet_to_json<ExcelQuestion>(worksheet, {
-      header: [
+    // 检查Excel格式
+    const headerA1 = worksheet['A1']?.v?.toString().trim();
+    const headerB1 = worksheet['B1']?.v?.toString().trim();
+    const headerC1 = worksheet['C1']?.v?.toString().trim();
+    
+    // 判断是新格式还是旧格式
+    const isNewFormat = 
+      headerA1 === '题目顺序' && headerB1 === '题目标题' && headerC1 === '题型';
+    
+    let headerMapping: string[];
+    
+    if (isNewFormat) {
+      // 新格式的列映射
+      headerMapping = [
+        'questionOrder',  // 题目顺序
+        'title',         // 题目标题
+        'type',          // 题型
+        'options',       // 选项内容
+        'scores',        // 选项分数
+        'isRequired',    // 是否必填
+        'placeholder',   // 占位符
+        'minNum',        // 最小数量
+        'maxNum',        // 最大数量
+        'others',        // 其他选项
+        'mustOthers',    // 其他选项必填
+        'othersKey',     // 其他选项键值
+        'placeholderDesc', // 提示内容
+        'layout',        // 布局方式
+        'horizontalColumns', // 横排每行列数
+        'quotaDisplay',  // 显示配额
+        'showIndex',     // 显示序号
+        'showType',      // 显示类型
+        'showSpliter',   // 显示分割线
+        'content',       // 题目内容
+      ];
+    } else {
+      // 旧格式的列映射
+      headerMapping = [
         'title',
         'type',
         'options',
@@ -1129,7 +1281,12 @@ export class SurveyController {
         'showIndex',
         'showType',
         'showSpliter',
-      ],
+      ];
+    }
+
+    // 将工作表转换为JSON数组
+    const jsonData = XLSX.utils.sheet_to_json<ExcelQuestion>(worksheet, {
+      header: headerMapping,
       range: 1, // 从第二行开始读取数据
     });
 
@@ -1155,10 +1312,13 @@ export class SurveyController {
         othersKey: (row.othersKey || '').toString().trim(),
         placeholderDesc: (row.placeholderDesc || '').toString().trim(),
         layout: (row.layout || '').toString().trim(),
+        horizontalColumns: (row.horizontalColumns || '').toString().trim(),
         quotaDisplay: (row.quotaDisplay || '').toString().trim(),
         showIndex: (row.showIndex || '').toString().trim(),
         showType: (row.showType || '').toString().trim(),
         showSpliter: (row.showSpliter || '').toString().trim(),
+        content: (row.content || '').toString().trim(),
+        questionOrder: (row.questionOrder || '').toString().trim(),
       });
     }
 
@@ -1267,7 +1427,7 @@ export class SurveyController {
 
       // 创建题目数据表 - 与导入格式保持一致
       const questionsData = exportData.surveyConf.dataConf.dataList.map(
-        (question) => {
+        (question, index) => {
           // 题型映射：英文转中文
           const typeMapping: Record<string, string> = {
             text: '单行输入框',
@@ -1286,6 +1446,7 @@ export class SurveyController {
           };
 
           const questionData: any = {
+            题目顺序: index + 1, // 题目在问卷中的顺序
             题目标题: question.title,
             题型: typeMapping[question.type] || question.type,
             选项内容: '',
@@ -1298,11 +1459,13 @@ export class SurveyController {
             其他选项必填: '',
             其他选项键值: '',
             提示内容: '',
-            布局方式: (question as any).layout || '',
+            布局方式: (question as any).layout || 'vertical',
+            横排每行列数: (question as any).horizontalColumns || 2,
             显示配额: question.quotaDisplay ? '是' : '否',
             显示序号: question.showIndex ? '是' : '否',
             显示类型: question.showType ? '是' : '否',
             显示分割线: question.showSpliter ? '是' : '否',
+            题目内容: '', // 用于描述文本和内联填空
           };
 
           // 处理选项
@@ -1334,9 +1497,20 @@ export class SurveyController {
             }
           }
 
-          // 处理描述文本/内联填空的内容：导出时放到“选项内容”列，便于与导入格式对齐
+          // 处理描述文本/内联填空的内容
           if (question.type === 'description' || question.type === 'inline-form') {
-            questionData.选项内容 = (question as any).content || ''
+            questionData.题目内容 = (question as any).content || '';
+            // 为了兼容旧版本，也保留在选项内容中
+            questionData.选项内容 = (question as any).content || '';
+          }
+
+          // 处理下拉框的选项
+          if (question.type === 'select' || question.type === 'select-multiple') {
+            if (question.options && question.options.length > 0) {
+              questionData.选项内容 = question.options
+                .map((option) => option.text)
+                .join('; ');
+            }
           }
 
           return questionData;
@@ -1345,6 +1519,45 @@ export class SurveyController {
 
       const questionsSheet = XLSX.utils.json_to_sheet(questionsData);
       XLSX.utils.book_append_sheet(workbook, questionsSheet, '题目列表');
+
+      // 创建皮肤设置表
+      const skinConfig = (exportData.surveyConf as any).skinConf;
+      if (skinConfig) {
+        const skinData = [
+          {
+            配置项: '头图链接',
+            配置值: skinConfig.bannerConfig?.bannerImg || '',
+            说明: '问卷头部横幅图片的URL链接'
+          },
+          {
+            配置项: '品牌Logo',
+            配置值: skinConfig.bannerConfig?.logoImg || '',
+            说明: '问卷品牌Logo图片的URL链接'
+          },
+          {
+            配置项: '主题色',
+            配置值: skinConfig.themeConf?.colorConf?.themeColor || '#4a4c5b',
+            说明: '问卷主题颜色，支持十六进制颜色值'
+          },
+          {
+            配置项: '提交按钮颜色',
+            配置值: skinConfig.themeConf?.colorConf?.submitBtnColor || '#4a4c5b',
+            说明: '提交按钮的背景颜色'
+          },
+          {
+            配置项: '背景色',
+            配置值: skinConfig.themeConf?.colorConf?.backgroundColor || '#f5f5f7',
+            说明: '问卷整体背景颜色'
+          },
+          {
+            配置项: '内容区背景色',
+            配置值: skinConfig.themeConf?.colorConf?.contentBackgroundColor || '#ffffff',
+            说明: '问卷内容区域背景颜色'
+          }
+        ];
+        const skinSheet = XLSX.utils.json_to_sheet(skinData);
+        XLSX.utils.book_append_sheet(workbook, skinSheet, '皮肤设置');
+      }
 
       // 生成Excel文件
       const excelBuffer = XLSX.write(workbook, {

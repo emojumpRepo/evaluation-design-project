@@ -30,6 +30,7 @@ export class SurveyConfService {
     code?: any;
     pageConf?: number[];
     descriptionConfig?: any;
+    skinConfig?: any;
   }) {
     const {
       surveyId,
@@ -40,6 +41,7 @@ export class SurveyConfService {
       code,
       pageConf,
       descriptionConfig,
+      skinConfig,
     } = params;
     let schemaData = null;
 
@@ -65,6 +67,10 @@ export class SurveyConfService {
             schemaData.bannerConf = {};
           }
           schemaData.bannerConf.descriptionConfig = descriptionConfig;
+        }
+        if (skinConfig && Object.keys(skinConfig).length > 0) {
+          console.log('设置皮肤配置到schemaData:', skinConfig);
+          schemaData.skinConf = skinConfig;
         }
       } catch (error) {
         throw new HttpException(

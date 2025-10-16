@@ -25,12 +25,11 @@ export const mockResponseSchema: ResponseSchema = {
   code: {
     bannerConf: {
       titleConfig: {
-        mainTitle:
-          '<h3 style="text-align: center">欢迎填写问卷</h3><p>为了给您提供更好的服务，希望您能抽出几分钟时间，将您的感受和建议告诉我们，<span style="color: rgb(204, 0, 0)">期待您的参与！</span></p>',
+        mainTitle: '',
         subTitle: '',
       },
       bannerConfig: {
-        bgImage: '/imgs/skin/17e06b7604a007e1d3e1453b9ddadc3c.webp',
+        bgImage: '',
         videoLink: '',
         postImg: '',
       },
@@ -44,17 +43,17 @@ export const mockResponseSchema: ResponseSchema = {
       answerEndTime: '',
     },
     bottomConf: {
-      logoImage: '/imgs/s-logo.webp',
+      logoImage: '',
       logoImageWidth: '60%',
     },
     skinConf: {
       backgroundConf: {
-        color: '#fff',
+        color: 'transparent',
         type: 'color',
         image: '',
       },
       themeConf: {
-        color: '#ffa600',
+        color: '#04DC70',
       },
       contentConf: {
         opacity: 100,
