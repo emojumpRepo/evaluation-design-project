@@ -100,7 +100,7 @@ const handleFormChange = (data: any, formConfig: any) => {
   }
 }
 
-const normalizationValues = (configList: Array<any> = []) => {
+const normalizationValues = (configList: Array<any> = []): Array<any> => {
   return configList
     .filter((item: any) => {
       // 组件组
@@ -127,7 +127,8 @@ const normalizationValues = (configList: Array<any> = []) => {
     .map((item: any) => {
       // 组件组需要递归处理content
       if (item.type === 'Customed') {
-        const filteredContent = normalizationValues(item.content)
+        const nestedContent = Array.isArray(item.content) ? item.content : []
+        const filteredContent = normalizationValues(nestedContent)
         return {
           ...item,
           content: filteredContent,

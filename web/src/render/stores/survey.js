@@ -13,6 +13,8 @@ import { getSurveyData, getSurveySubmit, setSurveyData } from '@/render/utils/st
 
 import adapter from '../adapter'
 import { RuleMatch } from '@/common/logicEngine/RulesMatch'
+import questionLoader from '@/materials/questions/questionLoader'
+import moduleList from '@/materials/questions/common/config/moduleList'
 /**
  * CODE_MAP不从management引入，在dev阶段，会导致B端 router被加载，进而导致C端路由被添加 baseUrl: /management
  */
@@ -192,6 +194,21 @@ export const useSurveyStore = defineStore('survey', () => {
     }
 
     questionStore.initOptionCountInfo()
+
+    // 预加载当前问卷所需的题型组件，避免运行态首次渲染空白（BlockComponent 为 null）
+    try {
+      const types = Array.isArray(option?.dataConf?.dataList)
+        ? Array.from(new Set(option.dataConf.dataList.map((q) => q && q.type).filter(Boolean)))
+        : []
+      const componentList = types
+        .map((t) => ({ type: t, path: moduleList[t] }))
+        .filter((it) => typeof it.path === 'string' && it.path.length > 0)
+      if (componentList.length) {
+        void questionLoader.loadComponents(componentList)
+      }
+    } catch (e) {
+      // ignore prefetch errors
+    }
 
     // 运行时重复 field 监测，仅报警不改数据
     try {
