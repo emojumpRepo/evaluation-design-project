@@ -1,8 +1,8 @@
-import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
+﻿import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 
 const routes: RouteRecordRaw[] = [
   {
-    path: '/:surveyId',
+    path: '/render/:surveyId',
     component: () => import('../pages/IndexPage.vue'),
     children: [
       {
@@ -28,11 +28,23 @@ const routes: RouteRecordRaw[] = [
     component: () => import('../pages/EmptyPage.vue')
   }
 ]
-// 兼容预览模式
-const base = window.location.pathname.includes('preview') ? 'management/preview' : 'render'
 const router = createRouter({
-  history: createWebHistory(base),
+  history: createWebHistory('/'),
   routes
 })
 
+// 规范化异常路径：若发生跳转到 /management/render/...，强制改回 /render/...
+router.beforeEach((to, _from, next) => {
+  const full = to.fullPath || to.path
+  console.log('full', full)
+  if (full.startsWith('/management/render/')) {
+    const normalized = full.replace(/^\/management/, '')
+    next({ path: normalized, replace: true })
+    console.log('normalized', normalized)
+    return
+  }
+  next()
+})
+
 export default router
+

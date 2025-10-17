@@ -183,11 +183,21 @@ const storageAnswer = (formData) => {
 /** 问卷逻辑处理 */
 // 显示逻辑：题目是否需要显示
 const logicShow = computed(() => {
+  // 逻辑引擎尚未初始化时默认展示，避免运行时抛错导致页面空白
+  const engine = showLogicEngine.value
+  if (!engine || typeof engine.match !== 'function') {
+    return true
+  }
   // computed有计算缓存，当match有变化的时候触发重新计算
   // 传入答案与题目schema供分数合计计算
   const facts = Object.assign({ __schema: surveyStore?.dataConf?.dataList || [] }, formValues.value)
-  const result = showLogicEngine.value.match(props.moduleConfig.field, 'question', facts)
-  return result === undefined ? true : result
+  try {
+    const result = engine.match(props.moduleConfig.field, 'question', facts)
+    return result === undefined ? true : result
+  } catch (error) {
+    console.warn('[QuestionWrapper] logicShow match failed:', error)
+    return true
+  }
 })
 watch(()=> logicShow.value, (value) => {
   if(!value){
@@ -258,8 +268,12 @@ watch(
         // ignore
       }
       if (!isRelated) return
-      // 如果被隐藏题目有选中值，则需要清空选中值
-      if (formValues.value[field].toString()) {
+      // 如果被隐藏题目有选中值，则需要清空选中值（空值保护）
+      const currentVal = (formValues.value || {})[field]
+      const hasValue = Array.isArray(currentVal)
+        ? currentVal.length > 0
+        : (currentVal !== undefined && currentVal !== null && String(currentVal))
+      if (hasValue) {
         let value = ''
         // 题型是多选，或者子题型是多选（innerType是用于投票）
         if (type === QUESTION_TYPE.CHECKBOX || innerType === QUESTION_TYPE.CHECKBOX) {
@@ -335,7 +349,11 @@ watch(
 
 // 解析跳转逻辑
 const processJumpSkip = () => {
-  const targetResult = surveyStore.jumpLogicEngine
+  const jumpEngine = surveyStore.jumpLogicEngine
+  if (!jumpEngine || typeof jumpEngine.getResultsByField !== 'function') {
+    return
+  }
+  const targetResult = jumpEngine
     .getResultsByField(changeField.value, surveyStore.formValues)
     .map((item) => {
       // 获取目标题的序号，处理跳转问卷末尾为最大题的序号

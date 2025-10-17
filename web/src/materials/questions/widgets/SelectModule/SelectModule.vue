@@ -113,6 +113,9 @@ export default {
 
     // 判断选项是否禁用
     const isDisabled = (item) => {
+      if (!item || typeof item !== 'object') {
+        return true
+      }
       if (!props.multiple) {
         return item.disabled
       }
@@ -121,41 +124,50 @@ export default {
     }
 
     // 处理后的选项列表,清理HTML标签
+    const normalizedOptions = computed(() => {
+      const opts = Array.isArray(props.options) ? props.options : []
+      if (!Array.isArray(props.options)) {
+        console.warn('[SelectModule] options should be an array. Received:', props.options)
+      }
+      return opts
+    })
+
     const myOptions = computed(() => {
-      const { options } = props
-      return options.map((item) => {
+      return normalizedOptions.value.map((item) => {
         return {
           ...item,
           disabled: isDisabled(item),
           label: cleanRichText(item.text),
-          value: item.hash
+          value: item.hash || ''
         }
       })
     })
 
     // 格式化显示的值,清理HTML标签
     const displayValue = computed(() => {
-      if (props.readonly) {
-        if (props.multiple && Array.isArray(props.value)) {
-          return props.value
-            .map((hash) => {
-              const option = props.options.find((opt) => opt.hash === hash)
-              return option ? cleanRichText(option.text) : hash
-            })
-            .join('、')
-        } else {
-          const option = props.options.find((opt) => opt.hash === props.value)
-          return option ? cleanRichText(option.text) : props.value
-        }
+      if (!props.readonly) {
+        return props.value
       }
-      return props.value
+      const options = normalizedOptions.value
+      if (props.multiple && Array.isArray(props.value)) {
+        return props.value
+          .map((hash) => {
+            const option = options.find((opt) => opt.hash === hash)
+            return option ? cleanRichText(option.text) : hash
+          })
+          .join('、')
+      }
+      const option = options.find((opt) => opt.hash === props.value)
+      return option ? cleanRichText(option.text) : props.value
     })
 
     // 监听选项变化，移除禁用的选项
     watch(
       () => myOptions.value,
       (newOptions) => {
-        const disabledHashes = newOptions.filter((i) => i.disabled).map((i) => i.hash)
+        const disabledHashes = newOptions
+          .filter((i) => i && i.disabled && i.hash)
+          .map((i) => i.hash)
         if (props.multiple && Array.isArray(props.value) && disabledHashes.length) {
           disabledHashes.forEach((hash) => {
             const index = props.value.indexOf(hash)
