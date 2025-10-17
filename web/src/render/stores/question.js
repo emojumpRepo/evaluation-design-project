@@ -168,7 +168,11 @@ export const useQuestionStore = defineStore('question', () => {
   })
 
   const addPageIndex = () => {
-    pageIndex.value++
+    const surveyStore = useSurveyStore()
+    const totalPages = Array.isArray(surveyStore.pageConf) ? surveyStore.pageConf.length : 0
+    if (pageIndex.value < totalPages) {
+      pageIndex.value++
+    }
   }
   const subPageIndex = () => {
     if (pageIndex.value > 1) {

@@ -24,37 +24,75 @@ export class ConditionNode<F extends string, O extends Operator> {
       this.result = false
       return this.result
     }
+    const normalizeFactValue = (factValue: any): string | string[] => {
+      if (Array.isArray(factValue)) {
+        return factValue.map((item) => (item == null ? '' : String(item)))
+      }
+      if (typeof factValue === 'string') {
+        return factValue
+      }
+      if (factValue && typeof factValue === 'object') {
+        return Object.values(factValue).map((item) => (item == null ? '' : String(item)))
+      }
+      if (factValue === undefined || factValue === null) {
+        return ''
+      }
+      return String(factValue)
+    }
+
+    const factValue = normalizeFactValue(facts[this.field])
+    const includesValue = (source: string | string[], target: FieldTypes) => {
+      const value = target == null ? '' : String(target)
+      if (Array.isArray(source)) {
+        return source.includes(value)
+      }
+      if (typeof source === 'string') {
+        return source.includes(value)
+      }
+      return false
+    }
+
+    const arrayIncludesAll = (source: string | string[], targets: FieldTypes[]) => {
+      return targets.every((item) => includesValue(source, item))
+    }
+
+    const arraySome = (source: string | string[], targets: FieldTypes[]) => {
+      return targets.some((item) => includesValue(source, item))
+    }
+
     switch (this.operator) {
       case Operator.Equal:
         if (this.value instanceof Array) {
-          this.result = this.value.every((v) => facts[this.field].includes(v))
+          this.result = arrayIncludesAll(factValue, this.value)
           return this.result
         } else {
-          this.result = facts[this.field].includes(this.value)
+          this.result = includesValue(factValue, this.value)
           return this.result
         }
       case Operator.Include:
         if (this.value instanceof Array) {
-          this.result = this.value.some((v) => facts[this.field].includes(v))
+          this.result = arraySome(factValue, this.value)
           return this.result
         } else {
-          this.result = facts[this.field].includes(this.value)
+          this.result = includesValue(factValue, this.value)
           return this.result
         }
       case Operator.NotInclude:
         if (this.value instanceof Array) {
-          this.result = this.value.some((v) => !facts[this.field].includes(v))
+          this.result = this.value.some((v) => !includesValue(factValue, v))
           return this.result
         } else {
-          this.result = !facts[this.field].includes(this.value)
+          this.result = !includesValue(factValue, this.value)
           return this.result
         }
       case Operator.NotEqual:
         if (this.value instanceof Array) {
-          this.result = this.value.every((v) => !facts[this.field].includes(v))
+          this.result = this.value.every((v) => !includesValue(factValue, v))
           return this.result
         } else {
-          this.result = facts[this.field].toString() !== this.value
+          const factString =
+            Array.isArray(factValue) ? factValue.join(',') : (factValue == null ? '' : String(factValue))
+          this.result = factString !== String(this.value)
           return this.result
         }
       case Operator.ScoreBetween:

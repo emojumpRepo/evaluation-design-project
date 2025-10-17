@@ -1,8 +1,8 @@
-<template>
+﻿<template>
   <router-view></router-view>
 </template>
 <script setup lang="ts">
-import { watch, onMounted, nextTick } from 'vue'
+import { onMounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getPublishedSurveyInfo, getPreviewSchema } from '../api/survey'
 import AlertDialog from '../components/AlertDialog.vue'
@@ -13,44 +13,83 @@ const route = useRoute()
 const router = useRouter()
 const surveyStore = useSurveyStore()
 
-watch(
-  () => route.query.t,
-  (t) => {
-    if (t) location.reload()
+if (typeof window !== 'undefined' && typeof history !== 'undefined') {
+  const wrapHistoryMethod = (method: 'replaceState' | 'pushState') => {
+    const original = history[method] as (...args: any[]) => any
+    if (typeof original === 'function' && !(original as any).__wrapped__) {
+      const wrapped = (...args: any[]) => {
+        try {
+          if (args && args.length >= 3 && typeof args[2] === 'string') {
+            const incomingUrl = args[2] as string
+            // 统一解析为绝对 URL，便于判断与改写
+            const url = new URL(incomingUrl, window.location.origin)
+            if (url.pathname.startsWith('/management/render/')) {
+              const normalizedPath = url.pathname.replace(/^\/management/, '')
+              const normalized = `${normalizedPath}${url.search}${url.hash}`
+              console.log(`[history.${method}] normalize ->`, incomingUrl, '=>', normalized)
+              args[2] = normalized
+            }
+          }
+        } catch (_) {
+          // ignore parse errors
+        }
+        console.log(`[history.${method}]`, ...args)
+        return original.apply(history, args)
+      }
+      Object.defineProperty(wrapped, '__wrapped__', { value: true })
+      history[method] = wrapped as typeof history[typeof method]
+    }
   }
-)
+  wrapHistoryMethod('replaceState')
+  wrapHistoryMethod('pushState')
+  window.addEventListener('popstate', (event) => {
+    console.log('[history.popstate]', window.location.href, event.state)
+  })
+}
+
+const getQueryString = (value: unknown): string => (typeof value === 'string' ? value : '')
+
+const parseControlWords = (value: string | null | undefined): string[] => {
+  if (!value) return []
+  return value
+    .split(',')
+    .map((segment) => decodeURIComponent(segment.trim()))
+    .filter((segment) => segment.length > 0)
+}
+
+const buildCleanUrl = (surveyId: string): string => `/render/${surveyId}`
+
+type CachedParams = {
+  userId: string
+  assessmentNo: string
+  questionId: string
+  tenantId: string
+  redirect: string
+  timestamp: string
+  controlWords?: string[]
+}
 
 onMounted(() => {
   const surveyId = route.params.surveyId as string
   const alert = useCommandComponent(AlertDialog)
-  
-  console.log('IndexPage onMounted - surveyId:', surveyId)
-  console.log('IndexPage onMounted - route.query:', route.query)
-  console.log('IndexPage onMounted - full URL:', window.location.href)
-  
-  // 只在有redirect参数时使用缓存机制
-  const redirect = route.query.redirect as string
-  // 显隐控制词（支持 controlWords 或 cw 参数，逗号分隔）
-  const cwParam = (route.query.controlWords as string) || (route.query.cw as string)
-  const parseCw = (val) => {
-    if (!val) return []
-    return val
-      .split(',')
-      .map((s) => decodeURIComponent(s.trim()))
-      .filter((s) => !!s)
-  }
-  const cwList = parseCw(cwParam)
+
+  console.log('[IndexPage] mount surveyId:', surveyId)
+  console.log('[IndexPage] route query:', route.query)
+  console.log('[IndexPage] location:', window.location.href)
+
+  const redirect = getQueryString(route.query.redirect)
+  const controlWordsParam =
+    getQueryString(route.query.controlWords) || getQueryString(route.query.cw)
+  const controlWords = parseControlWords(controlWordsParam)
   const sessionKey = `survey_params_${surveyId}`
-  
+
   if (redirect) {
-    // 有redirect参数时，检查缓存
-    const cachedParams = sessionStorage.getItem(sessionKey)
-    console.log('IndexPage - sessionKey:', sessionKey)
-    console.log('IndexPage - cachedParams:', cachedParams)
-    
-    if (cachedParams) {
-      // 如果已有缓存参数，使用缓存的参数
-      const params = JSON.parse(cachedParams)
+    const cachedParamsRaw = sessionStorage.getItem(sessionKey)
+    console.log('[IndexPage] sessionKey:', sessionKey)
+    console.log('[IndexPage] cached params:', cachedParamsRaw)
+
+    if (cachedParamsRaw) {
+      const params = JSON.parse(cachedParamsRaw) as CachedParams
       surveyStore.setSurveyPath(surveyId)
       surveyStore.setUserId(params.userId)
       surveyStore.setAssessmentNo(params.assessmentNo)
@@ -58,78 +97,70 @@ onMounted(() => {
       surveyStore.setTenantId(params.tenantId)
       surveyStore.setRedirectUrl(params.redirect)
       surveyStore.setControlWords(params.controlWords || [])
-      console.log('使用缓存的参数:', params)
-      getDetail(surveyId)
+      console.log('[IndexPage] using cached params from sessionStorage')
+      getDetail(surveyId, alert)
     } else {
-      // 第一次访问，缓存参数并清理URL
-      const userId = route.query.userId as string
-      const assessmentNo = route.query.assessmentNo as string
-      const questionId = route.query.questionId as string
-      const tenantId = route.query.tenantId as string
-      const timestamp = route.query.t as string
-      
-      console.log('解析的参数:', { userId, assessmentNo, questionId, tenantId, redirect, timestamp })
-      
-      // 缓存参数到sessionStorage
-      const params = {
-        userId: userId || '',
-        assessmentNo: assessmentNo || '',
-        questionId: questionId || '',
-        tenantId: tenantId || '',
-        redirect: redirect || '',
-        timestamp: timestamp || Date.now().toString(),
-        controlWords: cwList
+      const params: CachedParams = {
+        userId: getQueryString(route.query.userId),
+        assessmentNo: getQueryString(route.query.assessmentNo),
+        questionId: getQueryString(route.query.questionId),
+        tenantId: getQueryString(route.query.tenantId),
+        redirect,
+        timestamp: getQueryString(route.query.t) || Date.now().toString(),
+        controlWords
       }
+
+      console.log('[IndexPage] parsed query params:', params)
       sessionStorage.setItem(sessionKey, JSON.stringify(params))
-      console.log('已缓存参数到sessionStorage:', params)
-      
-      // 设置到store
+      console.log('[IndexPage] cached params to sessionStorage')
+
       surveyStore.setSurveyPath(surveyId)
       surveyStore.setUserId(params.userId)
-      surveyStore.setTenantId(params.tenantId)
       surveyStore.setAssessmentNo(params.assessmentNo)
       surveyStore.setQuestionId(params.questionId)
+      surveyStore.setTenantId(params.tenantId)
       surveyStore.setRedirectUrl(params.redirect)
       surveyStore.setControlWords(params.controlWords || [])
-      console.log('已设置参数到store')
-      
-      // 清理URL参数，跳转到干净的URL
-      const cleanUrl = `/${surveyId}`
-      console.log('准备跳转到干净URL:', cleanUrl)
-      console.log('当前路由base:', router.options.history.base)
-      
-      // 先加载数据，然后再跳转
-      getDetail(surveyId)
-      
-      // 使用 nextTick 确保数据加载后再跳转
+      console.log('[IndexPage] stored params in survey store')
+
+      const cleanUrl = buildCleanUrl(surveyId)
+      console.log('[IndexPage] normalize url →', cleanUrl)
+      console.log('[IndexPage] router history base →', router.options.history.base)
+
+      getDetail(surveyId, alert)
+
       nextTick(() => {
-        console.log('执行URL跳转...')
+        console.log('[IndexPage] replacing url...')
         router.replace(cleanUrl).then(() => {
-          console.log('URL跳转完成')
+          console.log('[IndexPage] url replace done')
         })
       })
     }
   } else {
-    // 没有redirect参数时，直接使用URL参数，不缓存也不清理URL
-    const userId = route.query.userId as string
-    const assessmentNo = route.query.assessmentNo as string
-    const questionId = route.query.questionId as string
-    const tenantId = route.query.tenantId as string
-    
-    console.log('无redirect参数，直接使用URL参数:', { userId, assessmentNo, questionId, tenantId })
-    
+    const userId = getQueryString(route.query.userId)
+    const assessmentNo = getQueryString(route.query.assessmentNo)
+    const questionId = getQueryString(route.query.questionId)
+    const tenantId = getQueryString(route.query.tenantId)
+
+    console.log('[IndexPage] use direct query params:', {
+      userId,
+      assessmentNo,
+      questionId,
+      tenantId
+    })
+
     surveyStore.setSurveyPath(surveyId)
-    surveyStore.setUserId(userId || '')
-    surveyStore.setAssessmentNo(assessmentNo || '')
-    surveyStore.setQuestionId(questionId || '')
-    surveyStore.setTenantId(tenantId || '')
+    surveyStore.setUserId(userId)
+    surveyStore.setAssessmentNo(assessmentNo)
+    surveyStore.setQuestionId(questionId)
+    surveyStore.setTenantId(tenantId)
     surveyStore.setRedirectUrl('')
-    surveyStore.setControlWords(cwList)
-    
-    // 直接加载问卷，保持URL参数不变
-    getDetail(surveyId)
+    surveyStore.setControlWords(controlWords)
+
+    getDetail(surveyId, alert)
   }
 })
+
 const loadData = (res: any, surveyPath: string) => {
   if (res.code === 200) {
     const data = res.data
@@ -143,6 +174,7 @@ const loadData = (res: any, surveyPath: string) => {
       logicConf,
       pageConf
     } = data.code
+
     const questionData = {
       bannerConf,
       baseConf,
@@ -153,7 +185,7 @@ const loadData = (res: any, surveyPath: string) => {
       pageConf
     }
 
-    if (!pageConf || pageConf?.length == 0) {
+    if (!pageConf || pageConf.length === 0) {
       questionData.pageConf = [dataConf.dataList.length]
     }
 
@@ -168,26 +200,22 @@ const loadData = (res: any, surveyPath: string) => {
   }
 }
 
-function isObjectId(id: string) {
-  const objectIdRegex = /^[0-9a-fA-F]{24}$/
-  return objectIdRegex.test(id)
-}
+const isObjectId = (id: string): boolean => /^[0-9a-fA-F]{24}$/.test(id)
 
-const getDetail = async (surveyPath: string) => {
-  const alert = useCommandComponent(AlertDialog)
+const getDetail = async (surveyPath: string, alert: ReturnType<typeof useCommandComponent>) => {
   try {
     if (isObjectId(surveyPath)) {
       const res: any = await getPreviewSchema({ surveyPath })
       loadData(res, surveyPath)
     } else {
       const res: any = await getPublishedSurveyInfo({ surveyPath })
-      // checkStatus(res.data)
       loadData(res, surveyPath)
       surveyStore.getEncryptInfo()
     }
-  } catch (error: any) {
-    console.log(error)
-    alert({ title: error.message || '获取问卷失败' })
+  } catch (error: unknown) {
+    const err = error as Error
+    console.error(err)
+    alert({ title: err.message || 'Failed to load survey' })
   }
 }
 </script>

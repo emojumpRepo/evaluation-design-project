@@ -65,45 +65,42 @@ export function numberMaxValidator(value, numberRangeMax) {
   return ''
 }
 
-// 从inline-form的content中解析出所有field名称及其配置
+// 从 inline-form 的 content 中解析出所有 field 名称及其配置（兼容精简语法）
 const parseInlineFormFields = (content) => {
-  if (!content) return []
+  if (!content || typeof content !== 'string') return []
 
-  const fields = []
-  const inputRegex = /\{\{input:([^:}]+):([^:}]*):([^:}]*):([^:}]*):([^:}]*):([^:}]*)\}\}/g
-  const selectRegex = /\{\{select:([^:}]+):/g
+  const uniqueBy = (arr, keyFn) => {
+    const seen = new Set()
+    const out = []
+    for (const it of arr) {
+      const k = keyFn(it)
+      if (!seen.has(k)) { seen.add(k); out.push(it) }
+    }
+    return out
+  }
 
-  let match
-  // 解析input字段：{{input:fieldName:placeholder:inputType:min:max:step}}
-  while ((match = inputRegex.exec(content)) !== null) {
-    const fieldName = match[1].trim()
-    const inputType = match[3].trim() || 'text'
-    const min = match[4] && match[4].trim() !== '' ? parseFloat(match[4].trim()) : undefined
-    const max = match[5] && match[5].trim() !== '' ? parseFloat(match[5].trim()) : undefined
+  const placeholders = []
+  const re = /\{\{([^}]+)\}\}/g
+  let m
+  while ((m = re.exec(content)) !== null) {
+    const raw = (m[1] || '').trim()
+    const [kind, ...rest] = raw.split(':')
+    const type = (kind || '').trim()
+    if (type !== 'input' && type !== 'select') continue
+    const fieldName = (rest[0] || '').trim()
+    if (!fieldName) continue
 
-    if (fieldName && !fields.some(f => f.name === fieldName)) {
-      fields.push({
-        name: fieldName,
-        type: 'input',
-        inputType: inputType,
-        min: min,
-        max: max
-      })
+    if (type === 'input') {
+      const inputType = (rest[2] || '').trim() || 'text'
+      const min = rest[3] && rest[3].trim() !== '' ? parseFloat(rest[3]) : undefined
+      const max = rest[4] && rest[4].trim() !== '' ? parseFloat(rest[4]) : undefined
+      placeholders.push({ name: fieldName, type: 'input', inputType, min, max })
+    } else {
+      placeholders.push({ name: fieldName, type: 'select' })
     }
   }
 
-  // 解析select字段
-  while ((match = selectRegex.exec(content)) !== null) {
-    const fieldName = match[1].trim()
-    if (fieldName && !fields.some(f => f.name === fieldName)) {
-      fields.push({
-        name: fieldName,
-        type: 'select'
-      })
-    }
-  }
-
-  return fields
+  return uniqueBy(placeholders, (it) => it.name)
 }
 
 // 根据提醒和题目的配置，生成本题的校验规则

@@ -5,18 +5,23 @@ export const useInputData = (questionKey) => {
   const questionStore = useQuestionStore()
   const surveyStore = useSurveyStore()
   const formValues = surveyStore.formValues
-  const questionVal = formValues[questionKey]
-  let rangeConfig = questionStore.questionData[questionKey].rangeConfig
+  const questionVal = formValues ? formValues[questionKey] : ''
+  // 兼容空值与未初始化
+  const questionValStr = Array.isArray(questionVal)
+    ? questionVal.join(',')
+    : (questionVal === undefined || questionVal === null ? '' : String(questionVal))
+  const q = (questionStore.questionData || {})[questionKey] || {}
+  let rangeConfig = q.rangeConfig || {}
   let othersValue = {}
   if (rangeConfig && Object.keys(rangeConfig).length > 0) {
     for (let key in rangeConfig) {
       const curRange = rangeConfig[key]
       if (curRange.isShowInput) {
         const rangeKey = `${questionKey}_${key}`
-        othersValue[rangeKey] = formValues[rangeKey]
+        othersValue[rangeKey] = formValues ? formValues[rangeKey] : ''
         curRange.othersKey = rangeKey
-        curRange.othersValue = formValues[rangeKey]
-        if (!questionVal.toString().includes(key) && formValues[rangeKey]) {
+        curRange.othersValue = formValues ? formValues[rangeKey] : ''
+        if (!questionValStr.includes(key) && formValues && formValues[rangeKey]) {
           // 如果分值被未被选中且对应的填写更多有值，则清空填写更多
           const data = {
             key: rangeKey,

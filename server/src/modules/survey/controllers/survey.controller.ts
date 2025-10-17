@@ -994,7 +994,7 @@ export class SurveyController {
           checked: false,
           minNum: parseInt(excelQuestion.minNum) || 0,
           maxNum: parseInt(excelQuestion.maxNum) || 0,
-          star: 0,
+          star: 5, // 默认5星评分
           placeholderDesc: excelQuestion.placeholderDesc || '',
           layout: excelQuestion.layout || 'vertical',
           horizontalColumns: parseInt(excelQuestion.horizontalColumns) || 2,
@@ -1002,21 +1002,56 @@ export class SurveyController {
             excelQuestion.quotaDisplay === '是' ||
             excelQuestion.quotaDisplay === 'true' ||
             excelQuestion.quotaDisplay === '1',
+          // 添加必要的默认字段
+          randomSort: false,
+          valid: '',
           cascaderData: {
             placeholder: [],
             children: [],
           },
         };
 
+        // 根据题型添加特定字段
+        if (question.type === 'radio-nps') {
+          question.nps = {
+            leftText: '极不满意',
+            rightText: '极满意',
+          };
+        }
+
+        if (question.type === 'radio-star') {
+          question.starStyle = 'star';
+          question.rangeConfig = {};
+        }
+
+        // 为选择题添加额外字段
+        if (['radio', 'checkbox', 'vote'].includes(question.type)) {
+          question.importKey = '';
+          question.importData = '';
+          question.cOption = '';
+          question.cOptions = [];
+          question.exclude = false;
+        }
+
+        // 为文本题添加文本范围配置
+        if (['text', 'textarea'].includes(question.type)) {
+          question.textRange = {
+            min: { placeholder: '0', value: 0 },
+            max: { placeholder: '1000', value: 1000 }
+          };
+        }
+
         // 处理描述文本和内联填空的内容
         if (question.type === 'description' || question.type === 'inline-form') {
           question.content = excelQuestion.content || excelQuestion.options || '';
         }
 
-        // 处理选项
-        if (excelQuestion.options) {
+        // 处理选项（但不处理描述文本和内联填空）
+        if (excelQuestion.options && question.type !== 'description' && question.type !== 'inline-form') {
+          // 支持多种分隔符：优先使用分号，如果没有分号则尝试使用|
+          const delimiter = excelQuestion.options.includes(';') ? ';' : '|';
           const optionTexts = excelQuestion.options
-            .split(';')
+            .split(delimiter)
             .map((text: string) => text.trim())
             .filter(Boolean);
           const optionScores = excelQuestion.scores
@@ -1058,6 +1093,7 @@ export class SurveyController {
 
               return {
                 text,
+                imageUrl: '', // 添加图片URL字段
                 others: isOthersOption,
                 mustOthers:
                   isOthersOption &&
