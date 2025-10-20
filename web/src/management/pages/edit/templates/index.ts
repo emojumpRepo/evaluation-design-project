@@ -10,11 +10,15 @@ const templateModules = {
   sas: () => import('./scales/sas'),
   epq: () => import('./scales/epq'),
   phq9: () => import('./scales/phq9'),
-  psqi: () => import('./scales/psqi'),
   scl90: () => import('./scales/scl90'),
-  disc: () => import('./scales/disc'),
   bigfive: () => import('./scales/BFI'),
-  general: () => import('./scales/general')
+  general: () => import('./scales/general'),
+  its: () => import('./scales/ITS'),
+  ybocs: () => import('./scales/Y-BOCS'),
+  bsq: () => import('./scales/BSQ'),
+  tas: () => import('./scales/TAS'),
+  tas26: () => import('./scales/TAS'),
+  hads: () => import('./scales/HADS')
 }
 
 /**
@@ -87,22 +91,40 @@ export const getAvailableTemplates = () => {
       category: '人格测评'
     },
     {
-      id: 'psqi',
-      name: 'PSQI睡眠质量指数',
-      description: '匹兹堡睡眠质量评估',
-      category: '心理健康'
-    },
-    {
       id: 'scl90',
       name: 'SCL-90症状自评量表',
       description: '90项症状清单',
       category: '心理健康'
     },
     {
-      id: 'disc',
-      name: 'DISC行为风格测评',
-      description: '行为风格四维度评估',
-      category: '人格测评'
+      id: 'its',
+      name: '人际信任量表(ITS)',
+      description: '评估个体对他人的信任程度',
+      category: '人际关系'
+    },
+    {
+      id: 'ybocs',
+      name: '耶鲁-布朗强迫症状量表(Y-BOCS)',
+      description: '评估强迫症状的严重程度',
+      category: '心理健康'
+    },
+    {
+      id: 'bsq',
+      name: '双相情感障碍自评量表(BSQ)',
+      description: '筛查双相情感障碍症状',
+      category: '心理健康'
+    },
+    {
+      id: 'tas',
+      name: '多伦多述情障碍量表(TAS-26)',
+      description: '评估述情障碍程度，包含4个因子共26个题目',
+      category: '心理健康'
+    },
+    {
+      id: 'hads',
+      name: '医院焦虑抑郁量表(HADS)',
+      description: '14题版本，评估焦虑和抑郁症状，适用于综合医院患者',
+      category: '心理健康'
     },
     {
       id: 'general',

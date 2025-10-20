@@ -3,32 +3,52 @@
  */
 
 import type { CalculateTemplate, Question, FormData } from '../types'
-import { avg, calculateCompletionRate, generateTimestamp } from '../utils'
+import { avg, calculateCompletionRate, generateTimestamp, safeCalculate, createCalculationError, SCL90_SEVERITY_LEVELS, type Scl90SeverityLevel } from '../utils'
+import { SCL90_NORMS } from '../norms'
 
 /**
  * SCL-90结果接口
  */
 export interface SCL90Result {
   success: boolean
-  totalScore: number           // 总分
+  rawScore: number            // 原始总分
+  standardScore: number        // 标准分（总均分×10，便于理解）
+  totalScore: number           // 总分（保留向后兼容）
   totalAverage: number         // 总均分
   positiveCount: number        // 阳性项目数
   negativeCount: number        // 阴性项目数
   positiveAverage: number      // 阳性症状均分
+  level: Scl90SeverityLevel   // 总体严重程度等级
+  levelArray: readonly Scl90SeverityLevel[]  // 等级枚举数组
+  interpretation: string       // 结果解释
+  recommendations: string[]    // 建议列表
   factors: {
-    somatization: { score: number; average: number; level: string }        // 躯体化
-    obsessiveCompulsive: { score: number; average: number; level: string } // 强迫
-    interpersonalSensitivity: { score: number; average: number; level: string } // 人际敏感
-    depression: { score: number; average: number; level: string }          // 抑郁
-    anxiety: { score: number; average: number; level: string }             // 焦虑
-    hostility: { score: number; average: number; level: string }           // 敌对
-    phobicAnxiety: { score: number; average: number; level: string }       // 恐怖
-    paranoidIdeation: { score: number; average: number; level: string }    // 偏执
-    psychoticism: { score: number; average: number; level: string }        // 精神病性
-    additional: { score: number; average: number; level: string }          // 其他
+    somatization: { rawScore: number; standardScore: number; average: number; level: Scl90SeverityLevel; levelArray: readonly Scl90SeverityLevel[] }        // 躯体化
+    obsessiveCompulsive: { rawScore: number; standardScore: number; average: number; level: Scl90SeverityLevel; levelArray: readonly Scl90SeverityLevel[] } // 强迫
+    interpersonalSensitivity: { rawScore: number; standardScore: number; average: number; level: Scl90SeverityLevel; levelArray: readonly Scl90SeverityLevel[] } // 人际敏感
+    depression: { rawScore: number; standardScore: number; average: number; level: Scl90SeverityLevel; levelArray: readonly Scl90SeverityLevel[] }          // 抑郁
+    anxiety: { rawScore: number; standardScore: number; average: number; level: Scl90SeverityLevel; levelArray: readonly Scl90SeverityLevel[] }             // 焦虑
+    hostility: { rawScore: number; standardScore: number; average: number; level: Scl90SeverityLevel; levelArray: readonly Scl90SeverityLevel[] }           // 敌对
+    phobicAnxiety: { rawScore: number; standardScore: number; average: number; level: Scl90SeverityLevel; levelArray: readonly Scl90SeverityLevel[] }       // 恐怖
+    paranoidIdeation: { rawScore: number; standardScore: number; average: number; level: Scl90SeverityLevel; levelArray: readonly Scl90SeverityLevel[] }    // 偏执
+    psychoticism: { rawScore: number; standardScore: number; average: number; level: Scl90SeverityLevel; levelArray: readonly Scl90SeverityLevel[] }        // 精神病性
+    additional: { rawScore: number; standardScore: number; average: number; level: Scl90SeverityLevel; levelArray: readonly Scl90SeverityLevel[] }          // 其他
   }
-  interpretation: string
+  questions?: Array<{
+    questionId: string
+    questionText: string
+    questionType: string
+    options: any[]
+    userAnswer: any
+    answerScore: number
+  }>
+  metadata?: {
+    totalQuestions: number
+    answeredQuestions: number
+    completionTime: number
+  }
   completionRate: string
+  itemScores: { [key: string]: number }
   timestamp: string
   scaleType: string
 }
@@ -68,12 +88,13 @@ const FACTOR_NAMES = {
 /**
  * 根据因子均分判定严重程度
  */
-const getFactorLevel = (average: number): string => {
-  if (average < 1.5) return '正常'
-  else if (average < 2.5) return '轻度'
-  else if (average < 3.5) return '中度'
-  else if (average < 4.5) return '重度'
-  else return '极重度'
+const getFactorLevel = (average: number): Scl90SeverityLevel => {
+  const [b1, b2, b3, b4] = SCL90_NORMS.factorSeverity.breaks
+  if (average < b1) return SCL90_SEVERITY_LEVELS[0]
+  if (average < b2) return SCL90_SEVERITY_LEVELS[1]
+  if (average < b3) return SCL90_SEVERITY_LEVELS[2]
+  if (average < b4) return SCL90_SEVERITY_LEVELS[3]
+  return SCL90_SEVERITY_LEVELS[4]
 }
 
 /**
@@ -176,11 +197,11 @@ const positiveAverage = positiveCount > 0 ? (positiveSum / positiveCount).toFixe
 // 计算各因子得分和均分
 const factors = {};
 const getFactorLevel = (average) => {
-  if (average < 1.5) return '正常';
-  else if (average < 2.5) return '轻度';
-  else if (average < 3.5) return '中度';
-  else if (average < 4.5) return '重度';
-  else return '极重度';
+  if (average < 1.5) return ${JSON.stringify(SCL90_SEVERITY_LEVELS[0])};
+  else if (average < 2.5) return ${JSON.stringify(SCL90_SEVERITY_LEVELS[1])};
+  else if (average < 3.5) return ${JSON.stringify(SCL90_SEVERITY_LEVELS[2])};
+  else if (average < 4.5) return ${JSON.stringify(SCL90_SEVERITY_LEVELS[3])};
+  else return ${JSON.stringify(SCL90_SEVERITY_LEVELS[4])};
 };
 
 for (const [factor, scores] of Object.entries(factorScores)) {
@@ -189,10 +210,12 @@ for (const [factor, scores] of Object.entries(factorScores)) {
   
   factors[factor] = {
     name: factorNames[factor],
-    score: factorScore,
+    rawScore: factorScore,
+    standardScore: Math.round(factorAverage * 10), // 平均分×10作为标准分
     average: parseFloat(factorAverage.toFixed(2)),
     itemCount: scores.length,
-    level: getFactorLevel(factorAverage)
+    level: getFactorLevel(factorAverage),
+    levelArray: ${JSON.stringify(SCL90_SEVERITY_LEVELS)}
   };
 }
 
@@ -223,17 +246,53 @@ if (sortedFactors.length > 0 && sortedFactors[0][1].average >= 2.0) {
   interpretation = interpretation.slice(0, -1); // 去掉最后的顿号
 }
 
+// 计算总体严重程度等级
+const overallLevel = getFactorLevel(parseFloat(totalAverage));
+
+// 生成建议
+let recommendations = [];
+if (overallLevel === ${JSON.stringify(SCL90_SEVERITY_LEVELS[0])}) {
+  recommendations = ['保持良好心态', '规律作息', '适度运动', '维持社交活动'];
+} else if (overallLevel === ${JSON.stringify(SCL90_SEVERITY_LEVELS[1])}) {
+  recommendations = ['关注心理健康', '学习压力管理', '增加放松活动', '与亲友交流'];
+} else if (overallLevel === ${JSON.stringify(SCL90_SEVERITY_LEVELS[2])}) {
+  recommendations = ['建议寻求心理咨询', '学习应对策略', '调整生活方式', '建立支持系统'];
+} else if (overallLevel === ${JSON.stringify(SCL90_SEVERITY_LEVELS[3])}) {
+  recommendations = ['建议寻求专业心理治疗', '考虑心理评估', '密切监护', '综合干预'];
+} else {
+  recommendations = ['立即寻求专业心理帮助', '可能需要精神科评估', '密切监护安全', '紧急干预'];
+}
+
 // 返回结果
 const result = {
   success: true,
-  totalScore: totalScore,
+  rawScore: totalScore,
+  standardScore: Math.round(parseFloat(totalAverage) * 10), // 总均分×10作为标准分
+  totalScore: totalScore,           // 保留向后兼容
   totalAverage: parseFloat(totalAverage),
   positiveCount: positiveCount,
   negativeCount: negativeCount,
   positiveAverage: parseFloat(positiveAverage),
-  factors: factors,
+  level: overallLevel,
+  levelArray: ${JSON.stringify(SCL90_SEVERITY_LEVELS)},
   interpretation: interpretation,
+  recommendations: recommendations,
+  factors: factors,
+  questions: sortedQuestions.map((question, index) => ({
+    questionId: question.field,
+    questionText: question.title ? question.title.replace(/<[^>]*>/g, '') : \`题目\${index + 1}\`,
+    questionType: question.type || 'single_choice',
+    options: question.options || [],
+    userAnswer: formData[question.field] || null,
+    answerScore: itemScores[question.field] || 0
+  })),
+  metadata: {
+    totalQuestions: 90,
+    answeredQuestions: answeredCount,
+    completionTime: Date.now() - (formData.startTime || Date.now())
+  },
   completionRate: Math.round((answeredCount / 90) * 100) + '%',
+  itemScores: itemScores,
   timestamp: new Date().toISOString(),
   scaleType: 'SCL-90症状自评量表'
 };
@@ -246,8 +305,12 @@ return result;`
    * 直接计算函数
    */
   calculate: (formData: FormData, questions: Question[]): SCL90Result => {
-    // 排序题目
-    const sortedQuestions = [...questions].sort((a, b) => {
+    return safeCalculate<SCL90Result>(scl90Template.metadata, () => {
+      if (!scl90Template.validate?.(questions)) {
+        return createCalculationError(scl90Template.metadata, '问卷不符合SCL-90要求') as any
+      }
+      // 排序题目
+      const sortedQuestions = [...questions].sort((a, b) => {
       const numA = parseInt(a.field.replace(/[^0-9]/g, ''))
       const numB = parseInt(b.field.replace(/[^0-9]/g, ''))
       return numA - numB
@@ -313,39 +376,71 @@ return result;`
     for (const [factor, scores] of Object.entries(factorScores)) {
       const factorScore = scores.reduce((sum, score) => sum + score, 0)
       const factorAverage = scores.length > 0 ? factorScore / scores.length : 0
-      
+
       factors[factor] = {
-        score: factorScore,
+        rawScore: factorScore,
+        standardScore: Math.round(factorAverage * 10), // 平均分×10作为标准分
         average: Math.round(factorAverage * 100) / 100,
-        level: getFactorLevel(factorAverage)
+        level: getFactorLevel(factorAverage),
+        levelArray: SCL90_SEVERITY_LEVELS
       }
     }
     
-    // 生成解释
+    // 生成解释和建议
+    const overallLevel = getFactorLevel(totalAverage)
     let interpretation = '整体评估：'
-    if (totalAverage < 1.5) {
+    let recommendations: string[] = []
+
+    if (overallLevel === SCL90_SEVERITY_LEVELS[0]) {
       interpretation += '心理健康状况良好'
-    } else if (totalAverage < 2.0) {
+      recommendations = ['保持良好心态', '规律作息', '适度运动', '维持社交活动']
+    } else if (overallLevel === SCL90_SEVERITY_LEVELS[1]) {
       interpretation += '存在轻度心理问题'
-    } else if (totalAverage < 2.5) {
+      recommendations = ['关注心理健康', '学习压力管理', '增加放松活动', '与亲友交流']
+    } else if (overallLevel === SCL90_SEVERITY_LEVELS[2]) {
       interpretation += '存在中度心理问题，建议寻求心理咨询'
-    } else {
+      recommendations = ['建议寻求心理咨询', '学习应对策略', '调整生活方式', '建立支持系统']
+    } else if (overallLevel === SCL90_SEVERITY_LEVELS[3]) {
       interpretation += '存在较严重心理问题，强烈建议寻求专业心理帮助'
+      recommendations = ['建议寻求专业心理治疗', '考虑心理评估', '密切监护', '综合干预']
+    } else {
+      interpretation += '存在严重心理问题，需要立即寻求专业帮助'
+      recommendations = ['立即寻求专业心理帮助', '可能需要精神科评估', '密切监护安全', '紧急干预']
     }
 
     return {
       success: true,
-      totalScore,
+      rawScore: totalScore,
+      standardScore: Math.round(totalAverage * 10), // 总均分×10作为标准分
+      totalScore,                        // 保留向后兼容
       totalAverage: Math.round(totalAverage * 100) / 100,
       positiveCount,
       negativeCount,
       positiveAverage: Math.round(positiveAverage * 100) / 100,
-      factors,
+      level: overallLevel,
+      levelArray: SCL90_SEVERITY_LEVELS,
       interpretation,
+      recommendations,
+      factors,
+      questions: sortedQuestions.map((question, index) => ({
+        questionId: question.field,
+        questionText: question.title ? question.title.replace(/<[^>]*>/g, '') : `题目${index + 1}`,
+        questionType: question.type || 'single_choice',
+        options: question.options || [],
+        userAnswer: formData[question.field] || null,
+        answerScore: itemScores[question.field] || 0
+      })),
+      metadata: {
+        totalQuestions: 90,
+        answeredQuestions: answeredCount,
+        completionTime: Date.now() - (formData.startTime || Date.now())
+      },
       completionRate: calculateCompletionRate(answeredCount, 90),
+      itemScores,
       timestamp: generateTimestamp(),
       scaleType: 'SCL-90症状自评量表'
     }
+    })
   },
 
   /**

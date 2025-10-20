@@ -3,7 +3,7 @@
  */
 
 import type { CalculateTemplate, Question, FormData, BigFiveResult, BigFiveDimension } from '../types'
-import { sortQuestionsByNumber, getOptionScore, calculateCompletionRate, generateTimestamp, reverseScoreMap5, avg } from '../utils'
+import { sortQuestionsByNumber, getOptionScore, calculateCompletionRate, generateTimestamp, reverseScoreMap5, avg, safeCalculate, createCalculationError, FACTOR_LEVELS_3, type FactorLevel3 } from '../utils'
 
 /**
  * 大五人格各维度题目分配（60题版本）
@@ -78,16 +78,12 @@ const DIMENSION_INTERPRETATIONS = {
 /**
  * 根据T分数获取等级和解释
  */
-const getLevel = (tScore: number, dimension: string): { level: string; description: string } => {
+const getLevel = (tScore: number, dimension: string): { level: FactorLevel3; description: string } => {
   const interpretations = DIMENSION_INTERPRETATIONS[dimension as keyof typeof DIMENSION_INTERPRETATIONS]
   
-  if (tScore >= 56) {
-    return { level: '高', description: interpretations.high }
-  } else if (tScore >= 45 && tScore <= 55) {
-    return { level: '中', description: interpretations.medium }
-  } else {
-    return { level: '低', description: interpretations.low }
-  }
+  if (tScore >= 56) return { level: FACTOR_LEVELS_3[2], description: interpretations.high }
+  if (tScore >= 45 && tScore <= 55) return { level: FACTOR_LEVELS_3[1], description: interpretations.medium }
+  return { level: FACTOR_LEVELS_3[0], description: interpretations.low }
 }
 
 /**
@@ -249,10 +245,11 @@ for (const [dim, scores] of Object.entries(dimensionScores)) {
   dimensions[dimKey] = {
     name: dimensionInfo[dim].name,
     nameEn: dimensionInfo[dim].nameEn,
-    score: tScore,
     rawScore: rawScore,
+    standardScore: tScore,
     avgScore: avgScore.toFixed(2),
     level: levelInfo.level,
+    levelArray: ${JSON.stringify(FACTOR_LEVELS_3)},
     description: levelInfo.description,
     itemCount: scores.length
   };
@@ -281,10 +278,61 @@ if (highDimensions.length === 0 && lowDimensions.length === 0) {
   profile += '各维度较为均衡。';
 }
 
+// 计算总体等级和解释
+const overallLevel = dimensions.extraversion.level; // 以外向性作为主要参考维度
+let interpretation = '';
+let recommendations = [];
+
+if (overallLevel === ${JSON.stringify(FACTOR_LEVELS_3[2])}) {
+  interpretation = '您表现出较为外向的人格特征，善于社交，充满活力。';
+  recommendations = ['发挥社交优势', '培养深度倾听能力', '在团队合作中发挥领导作用', '注意工作生活平衡'];
+} else if (overallLevel === ${JSON.stringify(FACTOR_LEVELS_3[1])}) {
+  interpretation = '您的人格特征较为均衡，在不同情境下表现出良好的适应性。';
+  recommendations = ['继续发挥适应性优势', '根据情境调整行为方式', '发展多元技能', '保持自我认知'];
+} else {
+  interpretation = '您表现出较为内向的人格特征，喜欢独处，深思熟虑。';
+  recommendations = ['发挥深度思考优势', '选择适合的工作环境', '建立深度人际关系', '给自己充足的独处时间'];
+}
+
+// 构建factors数组
+const factors = Object.entries(dimensions).map(([key, dim]) => ({
+  name: dim.name,
+  nameEn: dim.nameEn,
+  rawScore: dim.rawScore,
+  standardScore: dim.standardScore,
+  interpretation: dim.description,
+  level: dim.level,
+  levelArray: ${JSON.stringify(FACTOR_LEVELS_3)}
+}));
+
+// 计算总分
+const totalRawScore = Object.values(dimensions).reduce((sum, dim) => sum + dim.rawScore, 0);
+
 // 返回结果
 const result = {
   success: true,
+  rawScore: totalRawScore,
+  standardScore: dimensions.extraversion.standardScore, // 以外向性T分数作为主要标准分
   dimensions: dimensions,
+  level: overallLevel,
+  levelArray: ${JSON.stringify(FACTOR_LEVELS_3)},
+  interpretation: interpretation,
+  recommendations: recommendations,
+  factors: factors,
+  questions: sortedQuestions.map((question, index) => ({
+    questionId: question.field,
+    questionText: question.title ? question.title.replace(/<[^>]*>/g, '') : \`题目\${index + 1}\`,
+    questionType: question.type || 'single_choice',
+    options: question.options || [],
+    userAnswer: formData[question.field] || null,
+    answerScore: itemScores[question.field] || 0,
+    isReverse: Object.values(reverseItems).flat().includes(index + 1)
+  })),
+  metadata: {
+    totalQuestions: 60,
+    answeredQuestions: answeredCount,
+    completionTime: Date.now() - (formData.startTime || Date.now())
+  },
   itemScores: itemScores,
   completionRate: Math.round((answeredCount / 60) * 100) + '%',
   profile: profile,
@@ -300,7 +348,11 @@ return result;`
    * 直接计算函数
    */
   calculate: (formData: FormData, questions: Question[]): BigFiveResult => {
-    const sortedQuestions = sortQuestionsByNumber(questions)
+    return safeCalculate<BigFiveResult>(bigFiveTemplate.metadata, () => {
+      if (!bigFiveTemplate.validate?.(questions)) {
+        return createCalculationError(bigFiveTemplate.metadata, '问卷不符合BFI要求') as any
+      }
+      const sortedQuestions = sortQuestionsByNumber(questions)
     
     // 初始化各维度分数
     const dimensionScores: { [key: string]: number[] } = {
@@ -357,8 +409,10 @@ return result;`
       return {
         name: dimInfo.name,
         nameEn: dimInfo.nameEn,
-        score: tScore,
+        rawScore: rawScore,
+        standardScore: tScore,
         level: levelInfo.level,
+        levelArray: FACTOR_LEVELS_3,
         description: levelInfo.description,
         percentile: Math.round((tScore - 20) * 1.5) // 简化的百分位数计算
       }
@@ -372,15 +426,67 @@ return result;`
       conscientiousness: createDimension('C', dimensionScores.C)
     }
 
+      // 生成总体解释和建议
+    const overallLevel = dimensions.extraversion.level // 以外向性作为主要参考维度
+    let interpretation = ''
+    let recommendations: string[] = []
+
+    if (overallLevel === FACTOR_LEVELS_3[2]) {
+      interpretation = '您表现出较为外向的人格特征，善于社交，充满活力。'
+      recommendations = ['发挥社交优势', '培养深度倾听能力', '在团队合作中发挥领导作用', '注意工作生活平衡']
+    } else if (overallLevel === FACTOR_LEVELS_3[1]) {
+      interpretation = '您的人格特征较为均衡，在不同情境下表现出良好的适应性。'
+      recommendations = ['继续发挥适应性优势', '根据情境调整行为方式', '发展多元技能', '保持自我认知']
+    } else {
+      interpretation = '您表现出较为内向的人格特征，喜欢独处，深思熟虑。'
+      recommendations = ['发挥深度思考优势', '选择适合的工作环境', '建立深度人际关系', '给自己充足的独处时间']
+    }
+
+    // 构建factors数组
+    const factors = Object.entries(dimensions).map(([key, dim]) => ({
+      name: dim.name,
+      nameEn: dim.nameEn,
+      rawScore: dim.rawScore,
+      standardScore: dim.standardScore,
+      interpretation: dim.description,
+      level: dim.level,
+      levelArray: FACTOR_LEVELS_3
+    }))
+
+    // 计算总分
+    const totalRawScore = Object.values(dimensions).reduce((sum, dim) => sum + dim.rawScore, 0)
+
     return {
       success: true,
+      rawScore: totalRawScore,
+      standardScore: dimensions.extraversion.standardScore, // 以外向性T分数作为主要标准分
       dimensions,
+      level: overallLevel,
+      levelArray: FACTOR_LEVELS_3,
+      interpretation,
+      recommendations,
+      factors,
+      questions: sortedQuestions.map((question, index) => ({
+        questionId: question.field,
+        questionText: question.title ? question.title.replace(/<[^>]*>/g, '') : `题目${index + 1}`,
+        questionType: question.type || 'single_choice',
+        options: question.options || [],
+        userAnswer: formData[question.field] || null,
+        answerScore: itemScores[question.field] || 0,
+        isReverse: Object.values(REVERSE_ITEMS).flat().includes(index + 1)
+      })),
+      metadata: {
+        totalQuestions: 60,
+        answeredQuestions: answeredCount,
+        completionTime: Date.now() - (formData.startTime || Date.now())
+      },
       itemScores,
       completionRate: calculateCompletionRate(answeredCount, 60),
       profile: generateProfile(dimensions),
       timestamp: generateTimestamp(),
       scaleType: '大五人格量表（NEO-FFI-60）'
     }
+    })
   },
 
   /**

@@ -3,20 +3,48 @@
  */
 
 import type { CalculateTemplate, Question, FormData } from '../types'
-import { sortQuestionsByNumber, calculateCompletionRate, generateTimestamp } from '../utils'
+import { sortQuestionsByNumber, calculateCompletionRate, generateTimestamp, safeCalculate, createCalculationError, PHQ9_DEPRESSION_LEVELS, type Phq9DepressionLevel } from '../utils'
+import { PHQ9_NORMS } from '../norms'
 
 /**
  * PHQ-9结果接口
  */
 export interface PHQ9Result {
   success: boolean
-  totalScore: number
-  depressionLevel: string
+  rawScore: number            // 原始总分（0-27分）
+  standardScore: number       // 标准分（与原始分相同，0-27分）
+  totalScore: number          // 保留向后兼容
+  level: string               // 抑郁等级
+  levelArray: readonly string[]
   interpretation: string
-  recommendation: string
-  itemScores: { [key: string]: number }
-  functionalImpact: string
+  recommendations: string[]
+  factors: Array<{
+    name: string
+    rawScore: number        // 原始分
+    standardScore: number   // 标准分（与原始分相同）
+    interpretation: string
+    level: string
+    levelArray: readonly string[]
+  }>
+  questions: Array<{
+    questionId: string
+    questionText: string
+    questionType: string
+    options: any[]
+    userAnswer: any
+    answerScore: number
+    isReverse?: boolean
+  }>
+  metadata: {
+    totalQuestions: number
+    answeredQuestions: number
+    functionalImpact?: string
+    suicidalRisk?: boolean
+    completionTime: number
+  }
+  answeredCount: number
   completionRate: string
+  itemScores: { [key: string]: number }
   timestamp: string
   scaleType: string
 }
@@ -24,43 +52,19 @@ export interface PHQ9Result {
 /**
  * 抑郁程度评估标准
  */
-const DEPRESSION_LEVELS = [
-  { 
-    min: 0, 
-    max: 4, 
-    level: '无抑郁', 
-    interpretation: '无明显抑郁症状',
-    recommendation: '继续保持良好的心理健康状态'
-  },
-  { 
-    min: 5, 
-    max: 9, 
-    level: '轻微抑郁', 
-    interpretation: '存在轻微抑郁症状',
-    recommendation: '建议进行自我调节，必要时寻求心理咨询'
-  },
-  { 
-    min: 10, 
-    max: 14, 
-    level: '中度抑郁', 
-    interpretation: '存在中度抑郁症状',
-    recommendation: '建议寻求专业心理咨询或治疗'
-  },
-  { 
-    min: 15, 
-    max: 19, 
-    level: '中重度抑郁', 
-    interpretation: '存在中重度抑郁症状',
-    recommendation: '强烈建议立即寻求专业心理治疗'
-  },
-  { 
-    min: 20, 
-    max: 27, 
-    level: '重度抑郁', 
-    interpretation: '存在重度抑郁症状',
-    recommendation: '必须立即寻求专业精神科医生的帮助和治疗'
-  }
-]
+const DEPRESSION_LEVELS = PHQ9_NORMS.thresholds.map(t => ({
+  min: t.min, max: t.max, level: t.level,
+  interpretation: t.description || '' ,
+  recommendation: t.level === PHQ9_DEPRESSION_LEVELS[0]
+    ? '继续保持良好的心理健康状态'
+    : t.level === PHQ9_DEPRESSION_LEVELS[1]
+      ? '建议进行自我调节，必要时寻求心理咨询'
+      : t.level === PHQ9_DEPRESSION_LEVELS[2]
+        ? '建议寻求专业心理咨询或治疗'
+        : t.level === PHQ9_DEPRESSION_LEVELS[3]
+          ? '强烈建议立即寻求专业心理治疗'
+          : '必须立即寻求专业精神科医生的帮助和治疗'
+}))
 
 /**
  * PHQ-9抑郁症患者健康问卷模板
@@ -80,7 +84,19 @@ const phq9Template: CalculateTemplate = {
    * 生成计算代码
    */
   generateCode: (questions?: Question[]): string => {
+    // 在生成代码时先获取常量值
+    const depressionLevels = PHQ9_DEPRESSION_LEVELS;
+    const depressionLevelsJson = JSON.stringify(PHQ9_DEPRESSION_LEVELS);
+
     return `// PHQ-9抑郁症患者健康问卷计算代码
+// 统一辅助封装
+const __timestamp = () => new Date().toISOString();
+const __createCalculationError = (name, id, err) => ({ success: false, timestamp: __timestamp(), scaleType: name, error: { message: (err && err.message) || String(err) }});
+const __safeCalculate = (name, id, fn) => { try { return fn() } catch (e) { return __createCalculationError(name, id, e) } };
+
+// 抑郁等级定义
+const DEPRESSION_LEVELS = ${depressionLevelsJson};
+
 // 评估过去两周内的抑郁症状频率
 
 // 评分标准（0-3分）
@@ -104,7 +120,11 @@ const itemScores = {};
 let answeredCount = 0;
 let functionalImpact = '';
 
-sortedQuestions.forEach((question, index) => {
+return __safeCalculate('PHQ-9抑郁症患者健康问卷','phq9', () => {
+  // 基础校验：9或10题
+  if (!(sortedQuestions.length === 9 || sortedQuestions.length === 10)) return __createCalculationError('PHQ-9抑郁症患者健康问卷','phq9','题目数量应为9或10');
+
+  sortedQuestions.forEach((question, index) => {
   const answer = formData[question.field];
   const questionNumber = index + 1;
   
@@ -129,8 +149,6 @@ sortedQuestions.forEach((question, index) => {
       
       itemScores[question.field] = score;
       totalScore += score;
-      
-      console.log(\`题目\${questionNumber}: 得分\${score}\`);
     } else if (questionNumber === 10) {
       // 第10题是功能影响评估（不计入总分）
       if (question.options) {
@@ -143,7 +161,7 @@ sortedQuestions.forEach((question, index) => {
       }
     }
   }
-});
+  });
 
 // 根据总分评估抑郁程度
 let depressionLevel;
@@ -151,56 +169,87 @@ let interpretation;
 let recommendation;
 
 if (totalScore <= 4) {
-  depressionLevel = "无抑郁";
+  depressionLevel = DEPRESSION_LEVELS[0];
   interpretation = "无明显抑郁症状";
   recommendation = "继续保持良好的心理健康状态";
 } else if (totalScore >= 5 && totalScore <= 9) {
-  depressionLevel = "轻微抑郁";
+  depressionLevel = DEPRESSION_LEVELS[1];
   interpretation = "存在轻微抑郁症状";
   recommendation = "建议进行自我调节，必要时寻求心理咨询";
 } else if (totalScore >= 10 && totalScore <= 14) {
-  depressionLevel = "中度抑郁";
+  depressionLevel = DEPRESSION_LEVELS[2];
   interpretation = "存在中度抑郁症状";
   recommendation = "建议寻求专业心理咨询或治疗";
 } else if (totalScore >= 15 && totalScore <= 19) {
-  depressionLevel = "中重度抑郁";
+  depressionLevel = DEPRESSION_LEVELS[3];
   interpretation = "存在中重度抑郁症状";
   recommendation = "强烈建议立即寻求专业心理治疗";
 } else {
-  depressionLevel = "重度抑郁";
+  depressionLevel = DEPRESSION_LEVELS[4];
   interpretation = "存在重度抑郁症状";
   recommendation = "必须立即寻求专业精神科医生的帮助和治疗";
 }
 
 // 自杀风险评估（第9题）
-const suicidalIdeation = itemScores[sortedQuestions[8]?.field];
-if (suicidalIdeation >= 1) {
+const suicidalIdeation = itemScores[sortedQuestions.length > 8 ? sortedQuestions[8].field : ''];
+const suicidalRisk = suicidalIdeation >= 1;
+
+if (suicidalRisk) {
   recommendation += "\\n⚠️ 警告：存在自杀意念，请立即寻求紧急心理援助！";
 }
 
-// 返回结果
+// 返回标准格式结果
 const result = {
   success: true,
-  totalScore: totalScore,
-  depressionLevel: depressionLevel,
+  rawScore: totalScore,
+  standardScore: totalScore, // PHQ-9标准分与原始分相同
+  totalScore: totalScore,     // 保留向后兼容
+  level: depressionLevel,
+  levelArray: DEPRESSION_LEVELS,
   interpretation: interpretation,
-  recommendation: recommendation,
+  recommendations: suicidalRisk
+    ? [recommendation, "⚠️ 警告：存在自杀意念，请立即寻求紧急心理援助！"]
+    : [recommendation],
+  factors: [{
+    name: '抑郁症状',
+    rawScore: totalScore,
+    standardScore: totalScore, // PHQ-9标准分与原始分相同
+    interpretation: interpretation,
+    level: depressionLevel,
+    levelArray: DEPRESSION_LEVELS
+  }],
+  questions: sortedQuestions.map((question, index) => ({
+    questionId: question.field,
+    questionText: question.title ? question.title.replace(/<[^>]*>/g, '') : '题目' + (index + 1),
+    questionType: question.type || 'single_choice',
+    options: question.options || [],
+    userAnswer: formData[question.field] || null,
+    answerScore: itemScores[question.field] || 0,
+    isReverse: false
+  })),
+  metadata: {
+    totalQuestions: sortedQuestions.length,
+    answeredQuestions: answeredCount,
+    functionalImpact: functionalImpact || '未评估',
+    suicidalRisk: suicidalRisk,
+    completionTime: Date.now() - (formData.startTime || Date.now())
+  },
+  answeredCount: answeredCount,
+  completionRate: Math.round((answeredCount / sortedQuestions.length) * 100) + '%',
   itemScores: itemScores,
-  functionalImpact: functionalImpact || '未评估',
-  completionRate: Math.round((answeredCount / 10) * 100) + '%',
-  timestamp: new Date().toISOString(),
+  timestamp: __timestamp(),
   scaleType: 'PHQ-9抑郁症患者健康问卷'
 };
 
-console.log('PHQ-9计算结果:', result);
-return result;`
+return result;});`
   },
 
   /**
    * 直接计算函数
    */
   calculate: (formData: FormData, questions: Question[]): PHQ9Result => {
-    const sortedQuestions = sortQuestionsByNumber(questions)
+    return safeCalculate<PHQ9Result>(phq9Template.metadata, () => {
+      const sortedQuestions = sortQuestionsByNumber(questions)
     
     let totalScore = 0
     const itemScores: { [key: string]: number } = {}
@@ -249,26 +298,55 @@ return result;`
       totalScore >= level.min && totalScore <= level.max
     ) || DEPRESSION_LEVELS[DEPRESSION_LEVELS.length - 1]
 
-    let recommendation = levelInfo.recommendation
+    let recommendations = [levelInfo.recommendation]
 
     // 自杀风险评估（第9题）
     const suicidalIdeation = itemScores[sortedQuestions[8]?.field]
-    if (suicidalIdeation >= 1) {
-      recommendation += '\n⚠️ 警告：存在自杀意念，请立即寻求紧急心理援助！'
+    const suicidalRisk = suicidalIdeation >= 1
+    if (suicidalRisk) {
+      recommendations.push('⚠️ 警告：存在自杀意念，请立即寻求紧急心理援助！')
     }
 
     return {
       success: true,
-      totalScore,
-      depressionLevel: levelInfo.level,
+      rawScore: totalScore,
+      standardScore: totalScore, // PHQ-9标准分与原始分相同
+      totalScore,                 // 保留向后兼容
+      level: levelInfo.level,
+      levelArray: PHQ9_DEPRESSION_LEVELS,
       interpretation: levelInfo.interpretation,
-      recommendation,
+      recommendations,
+      factors: [{
+        name: '抑郁症状',
+        rawScore: totalScore,
+        standardScore: totalScore, // PHQ-9标准分与原始分相同
+        interpretation: levelInfo.interpretation,
+        level: levelInfo.level,
+        levelArray: PHQ9_DEPRESSION_LEVELS
+      }],
+      questions: sortedQuestions.map((question, index) => ({
+        questionId: question.field,
+        questionText: question.title ? question.title.replace(/<[^>]*>/g, '') : `题目${index + 1}`,
+        questionType: question.type || 'single_choice',
+        options: question.options || [],
+        userAnswer: formData[question.field] || null,
+        answerScore: itemScores[question.field] || 0,
+        isReverse: false
+      })),
+      metadata: {
+        totalQuestions: sortedQuestions.length,
+        answeredQuestions: answeredCount,
+        functionalImpact: functionalImpact || '未评估',
+        suicidalRisk: suicidalRisk,
+        completionTime: Date.now() - (formData.startTime || Date.now())
+      },
+      answeredCount,
+      completionRate: calculateCompletionRate(answeredCount, sortedQuestions.length),
       itemScores,
-      functionalImpact: functionalImpact || '未评估',
-      completionRate: calculateCompletionRate(answeredCount, 10),
       timestamp: generateTimestamp(),
       scaleType: 'PHQ-9抑郁症患者健康问卷'
     }
+    })
   },
 
   /**

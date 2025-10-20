@@ -2,7 +2,7 @@
  * 计算模板工具函数库
  */
 
-import type { Question, QuestionOption, FormData } from './types'
+import type { Question, QuestionOption, FormData, TemplateMetadata, CalculateResult } from './types'
 
 /**
  * 数组求和
@@ -252,4 +252,91 @@ export const generateScoreRangeDescription = (
   if (percentage <= 60) return '中等'
   if (percentage <= 80) return '较高'
   return '非常高'
+}
+
+/**
+ * 统一等级枚举（as const）
+ * 说明：为下游解析提供稳定的字符串集合，避免自由文本。
+ */
+export const SAS_ANXIETY_LEVELS = ['正常', '轻度焦虑', '中度焦虑', '重度焦虑'] as const
+export type SASAnxietyLevel = typeof SAS_ANXIETY_LEVELS[number]
+
+export const SDS_DEPRESSION_LEVELS = ['正常', '轻度抑郁', '中度抑郁', '重度抑郁'] as const
+export type SDSDepressionLevel = typeof SDS_DEPRESSION_LEVELS[number]
+
+// 通用因子等级（用于 BFI/EPQ 等三档）
+export const FACTOR_LEVELS_3 = ['低', '中', '高'] as const
+export type FactorLevel3 = typeof FACTOR_LEVELS_3[number]
+
+// SCL-90 五档严重度
+export const SCL90_SEVERITY_LEVELS = ['正常', '轻度', '中度', '重度', '极重度'] as const
+export type Scl90SeverityLevel = typeof SCL90_SEVERITY_LEVELS[number]
+
+// PHQ-9 抑郁严重度
+export const PHQ9_DEPRESSION_LEVELS = ['无抑郁', '轻微抑郁', '中度抑郁', '中重度抑郁', '重度抑郁'] as const
+export type Phq9DepressionLevel = typeof PHQ9_DEPRESSION_LEVELS[number]
+
+// BSQ 风险等级（示例阈值，详见标准文档）
+export const BSQ_RISK_LEVELS = ['低风险', '中等风险', '高风险'] as const
+export type BsqriskLevel = typeof BSQ_RISK_LEVELS[number]
+export const getBSQRiskLevel = (totalScore: number): BsqriskLevel => {
+  if (totalScore <= 15) return BSQ_RISK_LEVELS[0]
+  if (totalScore <= 24) return BSQ_RISK_LEVELS[1]
+  return BSQ_RISK_LEVELS[2]
+}
+
+// ITS 人际信任等级（按平均分阈值划分）
+export const ITS_TRUST_LEVELS = ['低信任', '中等信任', '高信任'] as const
+export type ITSTrustLevel = typeof ITS_TRUST_LEVELS[number]
+
+// Y-BOCS 严重程度（合并四档）
+export const YBOCS_SEVERITY_LEVELS = ['轻度', '中度', '重度', '极重'] as const
+export type YbocsSeverity = typeof YBOCS_SEVERITY_LEVELS[number]
+
+// TAS（述情障碍）等级（TAS-20 常用三档）
+export const TAS_ALEXITHYMIA_LEVELS = ['无述情障碍', '边缘', '述情障碍'] as const
+export type TasAlexithymiaLevel = typeof TAS_ALEXITHYMIA_LEVELS[number]
+
+// TAS-26 述情障碍等级（26题版本）
+export const TAS26_ALEXITHYMIA_LEVELS = ['无述情障碍', '边缘', '述情障碍'] as const
+export type TAS26AlexithymiaLevel = typeof TAS26_ALEXITHYMIA_LEVELS[number]
+
+// BSQ-12 自定义三档分类
+export const BSQ12_LEVELS = ['可能单相抑郁', '可能抑郁或轻双相', '可能双相情感障碍'] as const
+export type BSQ12Level = typeof BSQ12_LEVELS[number]
+
+// HADS 严重程度等级（0-7正常，8-10轻度，11-14中度，15-21重度）
+export const HADS_SEVERITY_LEVELS = ['正常', '轻度', '中度', '重度'] as const
+export type HADSSeverityLevel = typeof HADS_SEVERITY_LEVELS[number]
+
+/**
+ * 生成标准化错误结果
+ * 签名：metadata优先，保证调用一致性
+ */
+export const createCalculationError = (
+  metadata: TemplateMetadata,
+  error: unknown
+): CalculateResult => {
+  const message = error instanceof Error ? error.message : String(error)
+  return {
+    success: false,
+    timestamp: generateTimestamp(),
+    scaleType: metadata.name,
+    error: { message }
+  }
+}
+
+/**
+ * 包装计算过程，捕获并标准化错误
+ * 用法：safeCalculate(metadata, () => { ...返回 CalculateResult })
+ */
+export const safeCalculate = <T extends CalculateResult>(
+  metadata: TemplateMetadata,
+  fn: () => T
+): T => {
+  try {
+    return fn()
+  } catch (err) {
+    return createCalculationError(metadata, err) as T
+  }
 }

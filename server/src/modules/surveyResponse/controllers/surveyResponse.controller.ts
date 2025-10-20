@@ -819,10 +819,25 @@ export class SurveyResponseController {
           calculationResult?.depressionLevel ||
           calculationResult?.level ||
           '未评级',
+        levelArray: calculationResult?.levelArray || [],
         interpretation: calculationResult?.interpretation || '',
-        recommendations: this.generateRecommendations(calculationResult),
-        dimensions: calculationResult?.dimensions || [],
-        questions: questions,
+        recommendations: Array.isArray(calculationResult?.recommendations)
+          ? calculationResult.recommendations
+          : this.generateRecommendations(calculationResult),
+        dimensions: calculationResult?.dimensions || calculationResult?.factors || [],
+        factors: calculationResult?.factors || [],
+        questions: calculationResult?.questions || questions,
+        metadata: calculationResult?.metadata || {},
+        answeredCount: calculationResult?.answeredCount || 0,
+        completionRate: calculationResult?.completionRate || '0%',
+        itemScores: calculationResult?.itemScores || {},
+        timestamp: calculationResult?.timestamp || new Date().toISOString(),
+        scaleType: calculationResult?.scaleType || '',
+        // 兼容性字段
+        success: calculationResult?.success !== false,
+        totalScore: calculationResult?.totalScore || calculationResult?.rawScore || 0,
+        anxietyScore: calculationResult?.anxietyScore,
+        depressionScore: calculationResult?.depressionScore,
       },
       completedAt: now,
       createdAt: surveyResponse.createDate?.getTime() || now,

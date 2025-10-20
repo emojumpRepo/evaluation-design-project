@@ -3,18 +3,45 @@
  */
 
 import type { CalculateTemplate, Question, FormData } from '../types'
-import { sortQuestionsByNumber, calculateCompletionRate, generateTimestamp } from '../utils'
+import { sortQuestionsByNumber, calculateCompletionRate, generateTimestamp, safeCalculate, createCalculationError, FACTOR_LEVELS_3, type FactorLevel3 } from '../utils'
 
 /**
  * EPQ结果接口
  */
 export interface EPQResult {
   success: boolean
+  rawScore: number                        // 所有维度原始分总和
+  standardScore: number                   // 主要维度标准分（外向性T分数）
   dimensions: {
-    E: { name: string; score: number; tScore: number; level: string; description: string }
-    N: { name: string; score: number; tScore: number; level: string; description: string }
-    P: { name: string; score: number; tScore: number; level: string; description: string }
-    L: { name: string; score: number; tScore: number; level: string; description: string }
+    E: { name: string; rawScore: number; standardScore: number; level: FactorLevel3; levelArray: readonly FactorLevel3[]; description: string }
+    N: { name: string; rawScore: number; standardScore: number; level: FactorLevel3; levelArray: readonly FactorLevel3[]; description: string }
+    P: { name: string; rawScore: number; standardScore: number; level: FactorLevel3; levelArray: readonly FactorLevel3[]; description: string }
+    L: { name: string; rawScore: number; standardScore: number; level: FactorLevel3; levelArray: readonly FactorLevel3[]; description: string }
+  }
+  level: FactorLevel3                    // 总体人格特征等级（基于主要维度）
+  levelArray: readonly FactorLevel3[]   // 等级枚举数组
+  interpretation: string                 // 结果解释
+  recommendations: string[]              // 建议列表
+  factors: Array<{
+    name: string
+    rawScore: number        // 原始分
+    standardScore: number   // 标准分（T分数）
+    interpretation: string
+    level: FactorLevel3
+    levelArray: readonly FactorLevel3[]
+  }>
+  questions?: Array<{
+    questionId: string
+    questionText: string
+    questionType: string
+    options: any[]
+    userAnswer: any
+    answerScore: number
+  }>
+  metadata?: {
+    totalQuestions: number
+    answeredQuestions: number
+    completionTime: number
   }
   profile: string
   itemScores: { [key: string]: number }
@@ -70,7 +97,7 @@ const getTScore = (rawScore: number, dimension: string): number => {
 /**
  * 获取维度水平描述
  */
-const getDimensionLevel = (tScore: number, dimension: string): { level: string; description: string } => {
+const getDimensionLevel = (tScore: number, dimension: string): { level: FactorLevel3; description: string } => {
   const descriptions = {
     E: {
       high: '外向，善于社交，喜欢刺激和冒险',
@@ -93,16 +120,12 @@ const getDimensionLevel = (tScore: number, dimension: string): { level: string; 
       low: '回答较为真实坦诚'
     }
   }
-  
+
   const dimDesc = descriptions[dimension as keyof typeof descriptions]
-  
-  if (tScore >= 61) {
-    return { level: '高', description: dimDesc.high }
-  } else if (tScore >= 40 && tScore <= 60) {
-    return { level: '中', description: dimDesc.medium }
-  } else {
-    return { level: '低', description: dimDesc.low }
-  }
+
+  if (tScore >= 61) return { level: FACTOR_LEVELS_3[2], description: dimDesc.high }
+  if (tScore >= 40 && tScore <= 60) return { level: FACTOR_LEVELS_3[1], description: dimDesc.medium }
+  return { level: FACTOR_LEVELS_3[0], description: dimDesc.low }
 }
 
 /**
@@ -195,9 +218,9 @@ const getTScore = (rawScore, dimension) => {
 
 // 获取维度水平
 const getLevel = (tScore) => {
-  if (tScore >= 61) return '高';
-  if (tScore >= 40 && tScore <= 60) return '中';
-  return '低';
+  if (tScore >= 61) return ${JSON.stringify(FACTOR_LEVELS_3[2])};
+  if (tScore >= 40 && tScore <= 60) return ${JSON.stringify(FACTOR_LEVELS_3[1])};
+  return ${JSON.stringify(FACTOR_LEVELS_3[0])};
 };
 
 // 构建结果
@@ -213,32 +236,87 @@ for (const [dim, score] of Object.entries(dimensionScores)) {
   const tScore = getTScore(score, dim);
   dimensions[dim] = {
     name: dimensionNames[dim],
-    score: score,
-    tScore: tScore,
+    rawScore: score,
+    standardScore: tScore,
     level: getLevel(tScore),
+    levelArray: ${JSON.stringify(FACTOR_LEVELS_3)},
     description: \`\${dimensionNames[dim]}得分：\${score}，T分数：\${tScore}\`
   };
 }
 
 // 生成人格剖面
 let profile = '您的人格特征：';
-if (dimensions.E.level === '高') profile += '外向、';
-else if (dimensions.E.level === '低') profile += '内向、';
+if (dimensions.E.level === ${JSON.stringify(FACTOR_LEVELS_3[2])}) profile += '外向、';
+else if (dimensions.E.level === ${JSON.stringify(FACTOR_LEVELS_3[0])}) profile += '内向、';
 
-if (dimensions.N.level === '高') profile += '情绪不稳定、';
-else if (dimensions.N.level === '低') profile += '情绪稳定、';
+if (dimensions.N.level === ${JSON.stringify(FACTOR_LEVELS_3[2])}) profile += '情绪不稳定、';
+else if (dimensions.N.level === ${JSON.stringify(FACTOR_LEVELS_3[0])}) profile += '情绪稳定、';
 
-if (dimensions.P.level === '高') profile += '独立性强、';
-else if (dimensions.P.level === '低') profile += '合作性强、';
+if (dimensions.P.level === ${JSON.stringify(FACTOR_LEVELS_3[2])}) profile += '独立性强、';
+else if (dimensions.P.level === ${JSON.stringify(FACTOR_LEVELS_3[0])}) profile += '合作性强、';
 
 if (dimensions.L.tScore > 60) {
   profile += '（注意：掩饰性得分较高，结果可能受到社会期望影响）';
 }
 
+// 计算总体等级和解释
+const overallLevel = dimensions.E.level; // 以外向性作为主要参考维度
+let interpretation = '';
+let recommendations = [];
+
+if (overallLevel === ${JSON.stringify(FACTOR_LEVELS_3[2])}) {
+  interpretation = '您表现出较为明显的外向性人格特征，善于社交，充满活力。';
+  recommendations = ['发挥社交优势', '注意情绪管理', '保持工作生活平衡', '深化人际关系'];
+} else if (overallLevel === ${JSON.stringify(FACTOR_LEVELS_3[1])}) {
+  interpretation = '您的人格特征较为均衡，在不同情境下表现出灵活性。';
+  recommendations = ['继续发挥适应性优势', '明确个人价值观', '平衡社交与独处', '发展多元兴趣'];
+} else {
+  interpretation = '您表现出较为内向的人格特征，喜欢独处，深思熟虑。';
+  recommendations = ['培养深度思考能力', '选择适合的工作环境', '建立小而精的社交圈', '发挥专注优势'];
+}
+
+if (dimensions.L.tScore > 60) {
+  interpretation += '（注意：掩饰性得分较高，结果可能受到社会期望影响）';
+  recommendations.push('建议在更放松的状态下重新评估');
+}
+
+// 构建factors数组
+const factors = Object.entries(dimensions).map(([key, dim]) => ({
+  name: dim.name,
+  rawScore: dim.rawScore,
+  standardScore: dim.standardScore,
+  interpretation: dim.description,
+  level: dim.level,
+  levelArray: ${JSON.stringify(FACTOR_LEVELS_3)}
+}));
+
+// 计算总分
+const totalRawScore = Object.values(dimensions).reduce((sum, dim) => sum + dim.rawScore, 0);
+
 // 返回结果
 const result = {
   success: true,
+  rawScore: totalRawScore,
+  standardScore: dimensions.E.standardScore, // 以外向性T分数作为主要标准分
   dimensions: dimensions,
+  level: overallLevel,
+  levelArray: ${JSON.stringify(FACTOR_LEVELS_3)},
+  interpretation: interpretation,
+  recommendations: recommendations,
+  factors: factors,
+  questions: sortedQuestions.map((question, index) => ({
+    questionId: question.field,
+    questionText: question.title ? question.title.replace(/<[^>]*>/g, '') : \`题目\${index + 1}\`,
+    questionType: question.type || 'single_choice',
+    options: question.options || [],
+    userAnswer: formData[question.field] || null,
+    answerScore: itemScores[question.field] || 0
+  })),
+  metadata: {
+    totalQuestions: 88,
+    answeredQuestions: answeredCount,
+    completionTime: Date.now() - (formData.startTime || Date.now())
+  },
   profile: profile,
   itemScores: itemScores,
   completionRate: Math.round((answeredCount / 88) * 100) + '%',
@@ -254,7 +332,11 @@ return result;`
    * 直接计算函数
    */
   calculate: (formData: FormData, questions: Question[]): EPQResult => {
-    const sortedQuestions = sortQuestionsByNumber(questions)
+    return safeCalculate<EPQResult>(epqTemplate.metadata, () => {
+      if (!epqTemplate.validate?.(questions)) {
+        return createCalculationError(epqTemplate.metadata, '问卷不符合EPQ要求') as any
+      }
+      const sortedQuestions = sortQuestionsByNumber(questions)
     
     // 初始化各维度得分
     const dimensionScores = { E: 0, N: 0, P: 0, L: 0 }
@@ -303,9 +385,10 @@ return result;`
       const levelInfo = getDimensionLevel(tScore, dim)
       return {
         name,
-        score,
-        tScore,
+        rawScore: score,
+        standardScore: tScore,
         level: levelInfo.level,
+        levelArray: FACTOR_LEVELS_3,
         description: levelInfo.description
       }
     }
@@ -319,28 +402,83 @@ return result;`
 
     // 生成人格剖面
     let profile = '您的人格特征：'
-    if (dimensions.E.level === '高') profile += '外向、'
-    else if (dimensions.E.level === '低') profile += '内向、'
-    
-    if (dimensions.N.level === '高') profile += '情绪不稳定、'
-    else if (dimensions.N.level === '低') profile += '情绪稳定、'
-    
-    if (dimensions.P.level === '高') profile += '独立性强、'
-    else if (dimensions.P.level === '低') profile += '合作性强、'
-    
-    if (dimensions.L.tScore > 60) {
+    if (dimensions.E.level === FACTOR_LEVELS_3[2]) profile += '外向、'
+    else if (dimensions.E.level === FACTOR_LEVELS_3[0]) profile += '内向、'
+
+    if (dimensions.N.level === FACTOR_LEVELS_3[2]) profile += '情绪不稳定、'
+    else if (dimensions.N.level === FACTOR_LEVELS_3[0]) profile += '情绪稳定、'
+
+    if (dimensions.P.level === FACTOR_LEVELS_3[2]) profile += '独立性强、'
+    else if (dimensions.P.level === FACTOR_LEVELS_3[0]) profile += '合作性强、'
+
+    if (dimensions.L.standardScore > 60) {
       profile += '（注意：掩饰性得分较高，结果可能受到社会期望影响）'
     }
 
+      // 生成总体解释和建议
+    const overallLevel = dimensions.E.level // 以外向性作为主要参考维度
+    let interpretation = ''
+    let recommendations: string[] = []
+
+    if (overallLevel === FACTOR_LEVELS_3[2]) {
+      interpretation = '您表现出较为明显的外向性人格特征，善于社交，充满活力。'
+      recommendations = ['发挥社交优势', '注意情绪管理', '保持工作生活平衡', '深化人际关系']
+    } else if (overallLevel === FACTOR_LEVELS_3[1]) {
+      interpretation = '您的人格特征较为均衡，在不同情境下表现出灵活性。'
+      recommendations = ['继续发挥适应性优势', '明确个人价值观', '平衡社交与独处', '发展多元兴趣']
+    } else {
+      interpretation = '您表现出较为内向的人格特征，喜欢独处，深思熟虑。'
+      recommendations = ['培养深度思考能力', '选择适合的工作环境', '建立小而精的社交圈', '发挥专注优势']
+    }
+
+    if (dimensions.L.standardScore > 60) {
+      interpretation += '（注意：掩饰性得分较高，结果可能受到社会期望影响）'
+      recommendations.push('建议在更放松的状态下重新评估')
+    }
+
+    // 构建factors数组
+    const factors = Object.entries(dimensions).map(([key, dim]) => ({
+      name: dim.name,
+      rawScore: dim.rawScore,
+      standardScore: dim.standardScore,
+      interpretation: dim.description,
+      level: dim.level,
+      levelArray: FACTOR_LEVELS_3
+    }))
+
+    // 计算总分
+    const totalRawScore = Object.values(dimensions).reduce((sum, dim) => sum + dim.rawScore, 0)
+
     return {
       success: true,
+      rawScore: totalRawScore,
+      standardScore: dimensions.E.standardScore, // 以外向性T分数作为主要标准分
       dimensions,
+      level: overallLevel,
+      levelArray: FACTOR_LEVELS_3,
+      interpretation,
+      recommendations,
+      factors,
+      questions: sortedQuestions.map((question, index) => ({
+        questionId: question.field,
+        questionText: question.title ? question.title.replace(/<[^>]*>/g, '') : `题目${index + 1}`,
+        questionType: question.type || 'single_choice',
+        options: question.options || [],
+        userAnswer: formData[question.field] || null,
+        answerScore: itemScores[question.field] || 0
+      })),
+      metadata: {
+        totalQuestions: 88,
+        answeredQuestions: answeredCount,
+        completionTime: Date.now() - (formData.startTime || Date.now())
+      },
       profile,
       itemScores,
       completionRate: calculateCompletionRate(answeredCount, 88),
       timestamp: generateTimestamp(),
       scaleType: 'EPQ埃森克人格问卷（88题版）'
     }
+    })
   },
 
   /**

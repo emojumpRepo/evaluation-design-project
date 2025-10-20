@@ -2,6 +2,8 @@
  * 计算模板类型定义
  */
 
+import type { SDSDepressionLevel, FactorLevel3 } from './utils'
+
 /**
  * 题目选项
  */
@@ -40,6 +42,8 @@ export interface CalculateResult {
   success: boolean
   timestamp: string
   scaleType: string
+  rawScore?: number        // 原始总分（所有题目得分的直接相加）
+  standardScore?: number   // 标准分（经过转换、标准化或权重的分数）
   [key: string]: any
 }
 
@@ -79,8 +83,33 @@ export interface TemplateRegistry {
 export interface SDSResult extends CalculateResult {
   rawScore: number
   standardScore: number
-  depressionLevel: string
+  level: SDSDepressionLevel
+  levelArray: readonly SDSDepressionLevel[]
   interpretation: string
+  recommendations: string[]
+  factors: Array<{
+    name: string
+    score: number
+    interpretation: string
+    level: SDSDepressionLevel
+    levelArray: readonly SDSDepressionLevel[]
+  }>
+  questions?: Array<{
+    questionId: string
+    questionText: string
+    questionType: string
+    options: any[]
+    userAnswer: any
+    answerScore: number
+    isReverse?: boolean
+  }>
+  metadata?: {
+    totalQuestions: number
+    answeredQuestions: number
+    reverseItemsCount: number
+    completionTime: number
+  }
+  answeredCount: number
   itemScores: { [key: string]: number }
   completionRate: string
 }
@@ -91,8 +120,10 @@ export interface SDSResult extends CalculateResult {
 export interface BigFiveDimension {
   name: string
   nameEn: string
-  score: number
-  level: string
+  rawScore: number        // 维度原始分
+  standardScore: number   // 维度标准分（T分数）
+  level: FactorLevel3
+  levelArray: readonly FactorLevel3[]
   description: string
   percentile?: number
 }
@@ -101,12 +132,41 @@ export interface BigFiveDimension {
  * 大五人格计算结果
  */
 export interface BigFiveResult extends CalculateResult {
+  rawScore: number                        // 所有维度原始分总和
+  standardScore: number                   // 主要维度标准分（外向性T分数）
   dimensions: {
     neuroticism: BigFiveDimension
     extraversion: BigFiveDimension
     openness: BigFiveDimension
     agreeableness: BigFiveDimension
     conscientiousness: BigFiveDimension
+  }
+  level: FactorLevel3                    // 总体人格等级（基于主要维度）
+  levelArray: readonly FactorLevel3[]   // 等级枚举数组
+  interpretation: string                 // 结果解释
+  recommendations: string[]              // 建议列表
+  factors: Array<{
+    name: string
+    nameEn: string
+    rawScore: number        // 因子原始分
+    standardScore: number   // 因子标准分
+    interpretation: string
+    level: FactorLevel3
+    levelArray: readonly FactorLevel3[]
+  }>
+  questions?: Array<{
+    questionId: string
+    questionText: string
+    questionType: string
+    options: any[]
+    userAnswer: any
+    answerScore: number
+    isReverse?: boolean
+  }>
+  metadata?: {
+    totalQuestions: number
+    answeredQuestions: number
+    completionTime: number
   }
   itemScores: { [key: string]: number }
   completionRate: string

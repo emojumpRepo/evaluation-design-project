@@ -19,7 +19,7 @@ async function startServerAndRunScript() {
       `XIAOJU_SURVEY_MONGO_URL=${mongoUri}`,
       'NODE_ENV=development',
       'SERVER_ENV=local',
-      'npm',
+      'pnpm',
       'run',
       'start:dev',
     ],

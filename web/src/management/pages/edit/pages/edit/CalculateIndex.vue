@@ -72,15 +72,19 @@
                 </el-button>
                 <template #dropdown>
                   <el-dropdown-menu>
-                    <el-dropdown-item command="sds">SDS抑郁自评量表</el-dropdown-item>
-                    <el-dropdown-item command="sas">SAS焦虑自评量表</el-dropdown-item>
-                    <el-dropdown-item command="phq9">PHQ-9抑郁问卷</el-dropdown-item>
-                    <el-dropdown-item divided command="epq">EPQ埃森克人格问卷</el-dropdown-item>
-                    <el-dropdown-item command="bigfive">大五人格量表（BFI）</el-dropdown-item>
-                    <el-dropdown-item command="disc">DISC行为风格测评</el-dropdown-item>
-                    <el-dropdown-item divided command="psqi">PSQI睡眠质量指数</el-dropdown-item>
-                    <el-dropdown-item command="scl90">SCL-90症状自评量表</el-dropdown-item>
-                    <el-dropdown-item divided command="general">通用计算模板</el-dropdown-item>
+                    <template v-for="(group, groupName) in groupedTemplates" :key="groupName">
+                      <el-dropdown-item v-if="group.length > 0" divided>
+                        <span style="color: #909399; font-weight: bold;">{{ groupName }}</span>
+                      </el-dropdown-item>
+                      <el-dropdown-item
+                        v-for="template in group"
+                        :key="template.id"
+                        :command="template.id"
+                        :title="template.description"
+                      >
+                        {{ template.name }}
+                      </el-dropdown-item>
+                    </template>
                   </el-dropdown-menu>
                 </template>
               </el-dropdown>
@@ -199,6 +203,41 @@ const editorOptions = {
   }
 }
 
+// 获取可用模板列表
+const availableTemplates = ref(getAvailableTemplates())
+
+// 按分类分组模板
+const groupedTemplates = computed(() => {
+  const groups: Record<string, any[]> = {}
+
+  availableTemplates.value.forEach(template => {
+    const category = template.category || '其他'
+    if (!groups[category]) {
+      groups[category] = []
+    }
+    groups[category].push(template)
+  })
+
+  // 按优先级排序分组：心理健康 > 人格测评 > 人际关系 > 通用
+  const priorityOrder = ['心理健康', '人格测评', '人际关系', '通用']
+  const sortedGroups: Record<string, any[]> = {}
+
+  priorityOrder.forEach(category => {
+    if (groups[category]) {
+      sortedGroups[category] = groups[category]
+    }
+  })
+
+  // 添加其他分类
+  Object.keys(groups).forEach(category => {
+    if (!priorityOrder.includes(category)) {
+      sortedGroups[category] = groups[category]
+    }
+  })
+
+  return sortedGroups
+})
+
 // 生成代码模板
 const generateCodeTemplate = () => {
   const hasScoreQuestions = questionList.value.some((q: any) => q.hasScore)
@@ -277,23 +316,21 @@ const generateCodeTemplate = () => {
 
 // 处理模板选择
 const handleTemplateSelect = async (command: string) => {
-  let template = ''
+  let template: string = ''
   let message = ''
-  
-  // 使用新的模板系统
-  // 已移除对scl90、psqi、disc的特殊处理，因为它们现在已经实现
-  
+
   try {
     // 从模板系统动态加载代码
     console.log('尝试加载模板:', command)
-    template = await generateCodeFromTemplate(command, questionList.value)
+    const templateResult = await generateCodeFromTemplate(command, questionList.value)
+    template = templateResult || ''
     console.log('模板加载结果:', template ? '成功' : '失败')
-  } catch (error) {
+  } catch (error: any) {
     console.error('模板加载错误:', error)
-    ElMessage.error(`模板加载失败: ${error.message}`)
+    ElMessage.error(`模板加载失败: ${error?.message || '未知错误'}`)
     return
   }
-  
+
   if (!template) {
     // 如果模板系统没有返回代码，使用旧的生成方式作为后备
     if (command === 'general') {
@@ -308,40 +345,15 @@ const handleTemplateSelect = async (command: string) => {
       return
     }
   } else {
-    // 根据不同模板设置消息
-    switch (command) {
-      case 'sds':
-        message = '已插入SDS抑郁自评量表计算模板'
-        break
-      case 'sas':
-        message = '已插入SAS焦虑自评量表计算模板'
-        break
-      case 'phq9':
-        message = '已插入PHQ-9抑郁问卷计算模板'
-        break
-      case 'epq':
-        message = '已插入EPQ埃森克人格问卷计算模板'
-        break
-      case 'bigfive':
-        message = '已插入大五人格量表（BFI）计算模板'
-        break
-      case 'disc':
-        message = '已插入DISC行为风格测评计算模板'
-        break
-      case 'psqi':
-        message = '已插入PSQI睡眠质量指数计算模板'
-        break
-      case 'scl90':
-        message = '已插入SCL-90症状自评量表计算模板'
-        break
-      case 'general':
-        message = '已插入通用计算模板'
-        break
-      default:
-        message = '已插入计算模板'
+    // 动态获取模板名称用于消息显示
+    const selectedTemplate = availableTemplates.value.find(t => t.id === command)
+    if (selectedTemplate) {
+      message = `已插入${selectedTemplate.name}计算模板`
+    } else {
+      message = '已插入计算模板'
     }
   }
-  
+
   if (template) {
     // 更新本地状态
     calculateConfig.value.code = template
@@ -349,7 +361,7 @@ const handleTemplateSelect = async (command: string) => {
     if (!calculateConfig.value.enabled) {
       calculateConfig.value.enabled = true
     }
-    
+
     // 保存到schema
     const config = {
       enabled: true,  // 插入模板时自动启用
