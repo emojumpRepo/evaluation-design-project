@@ -277,14 +277,22 @@ const excelToSchema = (excelQuestions: Array<{
           // 先解码HTML实体
           const decodedOptions = decodeHtmlEntities(options);
 
+          // 选项文本：可过滤空项
           const splitSmart = (val?: string) =>
             (val || '')
               .split(/[；;]+/)
               .map((s) => s.trim())
               .filter((s) => s.length > 0)
 
+          // 分数需要与选项严格按索引对齐：保留空项
+          const splitScore = (val?: string) =>
+            (val || '')
+              .replace(/；/g, ';')
+              .split(';')
+              .map((s) => s.trim())
+
           const optionTexts = splitSmart(decodedOptions)
-          const optionScores = splitSmart(scores)
+          const optionScores = splitScore(scores)
           const othersOptions = splitSmart(others)
           const mustOthersOptions = splitSmart(mustOthers)
           const othersKeyOptions = splitSmart(othersKey)

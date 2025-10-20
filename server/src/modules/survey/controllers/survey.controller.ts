@@ -1048,35 +1048,37 @@ export class SurveyController {
 
         // 处理选项（但不处理描述文本和内联填空）
         if (excelQuestion.options && question.type !== 'description' && question.type !== 'inline-form') {
+          // 统一将中文分号替换为英文分号，便于一致处理
+          const normalizedOptions = (excelQuestion.options || '').replace(/；/g, ';');
           // 支持多种分隔符：优先使用分号，如果没有分号则尝试使用|
-          const delimiter = excelQuestion.options.includes(';') ? ';' : '|';
-          const optionTexts = excelQuestion.options
-            .split(delimiter)
+          const hasSemicolon = normalizedOptions.includes(';');
+          const optionTexts = normalizedOptions
+            .split(hasSemicolon ? ';' : '|')
             .map((text: string) => text.trim())
             .filter(Boolean);
+          // 分数需与选项按索引对齐：保留空项（如";1"表示第一个0分、第二个1分）
           const optionScores = excelQuestion.scores
-            ? excelQuestion.scores
-                .split(';')
-                .map((score: string) => score.trim())
+            ? (excelQuestion.scores.replace(/；/g, ';')).split(';').map((score: string) => score.trim())
             : [];
+          // 其余分号分隔字段：兼容中英文分号
           const othersOptions = excelQuestion.others
-            ? excelQuestion.others
+            ? excelQuestion.others.replace(/；/g, ';')
                 .split(';')
                 .map((text: string) => text.trim())
                 .filter(Boolean)
             : [];
           const mustOthersOptions = excelQuestion.mustOthers
-            ? excelQuestion.mustOthers
+            ? excelQuestion.mustOthers.replace(/；/g, ';')
                 .split(';')
                 .map((text: string) => text.trim())
             : [];
           const othersKeyOptions = excelQuestion.othersKey
-            ? excelQuestion.othersKey
+            ? excelQuestion.othersKey.replace(/；/g, ';')
                 .split(';')
                 .map((text: string) => text.trim())
             : [];
           const placeholderDescOptions = excelQuestion.placeholderDesc
-            ? excelQuestion.placeholderDesc
+            ? excelQuestion.placeholderDesc.replace(/；/g, ';')
                 .split(';')
                 .map((text: string) => text.trim())
             : [];
