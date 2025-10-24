@@ -18,7 +18,8 @@ export default [
       'answer_type',
       'white_placeholder',
       'white_list',
-      'team_list'
+      'team_list',
+      'default_skip_score'
     ]
   },
   {

@@ -291,7 +291,7 @@ export class SurveyResponseController {
     return recommendations;
   }
 
-  static formatAllAnswers(dataList, formValues) {
+  static formatAllAnswers(dataList, formValues, defaultSkipScore = 0) {
     function stripHtmlTags(str) {
       if (typeof str !== 'string') return str;
       // 仅移除看起来像 HTML 标签/注释的结构：
@@ -317,6 +317,17 @@ export class SurveyResponseController {
     const result = [];
     let questionIndex = 1; // 题目序号计数器
     dataList.forEach((questionItem) => {
+      const perQuestionSkipScore = (() => {
+        try {
+          if (questionItem?.overrideSkipScore) {
+            const s = Number(questionItem?.skipScore);
+            return Number.isFinite(s) ? s : undefined;
+          }
+        } catch (e) {
+          return undefined;
+        }
+        return undefined;
+      })();
       // 跳过描述组件，不计入结果
       if (questionItem.type === 'description') {
         return;
@@ -326,8 +337,22 @@ export class SurveyResponseController {
       let scoreTotal = 0;
       let titleText = stripHtmlTags(questionItem.title);
 
-      if (userValue === undefined || userValue === null || userValue === '') {
+      const isStarOrNps =
+        questionItem?.type === QUESTION_TYPE.RADIO_STAR ||
+        questionItem?.type === QUESTION_TYPE.RADIO_NPS ||
+        questionItem?.type === 'radio-star' ||
+        questionItem?.type === 'radio-nps';
+      const isEmptyAnswer =
+        userValue === undefined ||
+        userValue === null ||
+        (typeof userValue === 'string' && userValue.trim() === '') ||
+        (Array.isArray(userValue) && userValue.length === 0) ||
+        (isStarOrNps && (userValue === 0 || userValue === '0'));
+
+      if (isEmptyAnswer) {
         answerText = '';
+        const ds = Number(perQuestionSkipScore ?? defaultSkipScore);
+        scoreTotal = Number.isFinite(ds) ? ds : 0;
       } else if (questionItem.type === QUESTION_TYPE.SELECT) {
         // 下拉单选: answer为字符串
         if (
@@ -388,6 +413,8 @@ export class SurveyResponseController {
             answerText = fieldValues.map((v) => stripHtmlTags(String(v)));
           } else {
             answerText = '';
+            const ds = Number(perQuestionSkipScore ?? defaultSkipScore);
+            scoreTotal = Number.isFinite(ds) ? ds : 0;
           }
         } else {
           // 兼容旧数据（字符串类型）
@@ -417,7 +444,11 @@ export class SurveyResponseController {
           }
           return baseText;
         };
-        if (Array.isArray(userValue)) {
+        if (isEmptyAnswer) {
+          answerText = '';
+          const ds = Number(perQuestionSkipScore ?? defaultSkipScore);
+          scoreTotal = Number.isFinite(ds) ? ds : 0;
+        } else if (Array.isArray(userValue)) {
           answerText = userValue.map(getOptionWithInput);
           scoreTotal = userValue.reduce(
             (sum, hash) => sum + (optionScoreMap[hash] || 0),
@@ -471,6 +502,7 @@ export class SurveyResponseController {
     const allAnswers = SurveyResponseController.formatAllAnswers(
       responseSchema.code.dataConf.dataList,
       formValues,
+      Number(((responseSchema?.code?.baseConf as any)?.defaultSkipScore)) || 0,
     );
     console.log('用户填写的所有题目和答案：' + JSON.stringify(allAnswers));
 
@@ -638,6 +670,7 @@ export class SurveyResponseController {
 
     // 生成一个optionTextAndId字段，因为选项文本可能会改，该字段记录当前提交的文本
     const dataList = responseSchema.code.dataConf.dataList;
+    const defaultSkipScore = Number(((responseSchema?.code?.baseConf as any)?.defaultSkipScore)) || 0;
     const optionTextAndId: Record<
       string,
       Array<{ hash: string; text: string }>
@@ -835,6 +868,7 @@ export class SurveyResponseController {
 
     // 格式化题目和答案数据，过滤掉描述组件
     const dataList = responseSchema.code.dataConf.dataList;
+    const defaultSkipScore = Number(responseSchema?.code?.baseConf?.defaultSkipScore) || 0;
     const questions = dataList
       .filter((questionItem) => questionItem.type !== 'description') // 过滤掉描述组件
       .map((questionItem) => {
@@ -882,10 +916,26 @@ export class SurveyResponseController {
             );
             questionData.answerScore = selectedOpt?.score || 0;
           }
+        } else {
+          const perQuestionSkipScore = questionItem?.overrideSkipScore ? Number(questionItem?.skipScore) : undefined;
+          const ds = Number.isFinite(perQuestionSkipScore) ? perQuestionSkipScore : Number(defaultSkipScore);
+          questionData.answerScore = Number.isFinite(ds) ? ds : 0;
         }
       } else {
         // 非选项题目
         questionData.userAnswer = userValue || '';
+      }
+
+      // 若最终答案为空（包括空数组），统一赋默认分数
+      if (
+        userValue === undefined ||
+        userValue === null ||
+        userValue === '' ||
+        (Array.isArray(userValue) && userValue.length === 0)
+      ) {
+        const perQuestionSkipScore = questionItem?.overrideSkipScore ? Number(questionItem?.skipScore) : undefined;
+        const ds = Number.isFinite(perQuestionSkipScore) ? perQuestionSkipScore : Number(defaultSkipScore);
+        questionData.answerScore = Number.isFinite(ds) ? ds : 0;
       }
 
       return questionData;

@@ -5,6 +5,7 @@
     @change="handleInputChange"
     :min="minModelValue"
     :max="maxModelValue"
+    :disabled="isDisabled"
   />
 </template>
 <script setup lang="ts">
@@ -51,6 +52,18 @@ const maxModelValue = computed(() => {
   } else {
     return Infinity
   }
+})
+
+const isDisabled = computed(() => {
+  const d = (props.formConfig as any).disabled
+  if (typeof d === 'function') {
+    try {
+      return !!d(myModuleConfig.value)
+    } catch (e) {
+      return false
+    }
+  }
+  return d === true
 })
 
 const handleInputChange = (value: number) => {

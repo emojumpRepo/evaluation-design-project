@@ -206,6 +206,15 @@ export default {
       return !!data?.callbackConfig?.enabled && !!data?.callbackConfig?.headersEnabled
     }
   },
+  default_skip_score: {
+    key: 'defaultSkipScore',
+    label: '未作答默认分数',
+    type: 'InputNumber',
+    tip: '当题目跳过或未作答时使用该分数',
+    placement: 'top',
+    min: 0,
+    value: 0
+  },
   control_words: {
     key: 'controlWords',
     label: '显隐控制词',

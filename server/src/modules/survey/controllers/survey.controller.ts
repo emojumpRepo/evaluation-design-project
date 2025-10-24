@@ -641,7 +641,9 @@ export class SurveyController {
         answerBegTime: surveyConf.code.baseConf.answerBegTime,
         answerEndTime: surveyConf.code.baseConf.answerEndTime,
         surveyConfId: surveyConf._id.toString(),
-        questionCount: surveyConf?.code?.dataConf?.dataList?.length || 0,
+        questionCount: Array.isArray(surveyConf?.code?.dataConf?.dataList)
+          ? surveyConf.code.dataConf.dataList.filter((q: any) => q.type !== 'description').length
+          : 0,
       };
     });
 

@@ -77,6 +77,9 @@ export interface DataItem {
   innerType?: string;
   cascaderData: CascaderDate;
   quotaDisplay?: boolean;
+  // 题目级未作答分数覆盖
+  overrideSkipScore?: boolean;
+  skipScore?: number;
 }
 
 export interface Option {
@@ -148,6 +151,8 @@ export interface BaseConf {
   whitelist?: string[];
   // 提示语
   whitelistTip?: string;
+  // 全局未作答默认分数
+  defaultSkipScore?: number;
 }
 
 export interface SkinConf {

@@ -35,6 +35,32 @@ export default {
         )
       }
     },
+    // 自定义未作答分数（直接作为顶层条目渲染，避免嵌套 Customed 无法渲染组件）
+    {
+      label: '启用题目级未作答分数',
+      type: 'CustomedSwitch',
+      key: 'overrideSkipScore',
+      value: false,
+      // 开启时确保写入 skipScore=0（即使未手动改动输入框），避免未持久化导致后端读取为 undefined
+      valueSetter({ key, value }) {
+        if (value) {
+          return [
+            { key, value },
+            { key: 'skipScore', value: 0 }
+          ]
+        }
+        return { key, value }
+      }
+    },
+    {
+      label: '未作答分数',
+      type: 'InputNumber',
+      key: 'skipScore',
+      value: 0,
+      min: 0,
+      disabled: (data) => !data?.overrideSkipScore,
+      contentClass: 'input-number-config'
+    },
     {
       label: '每行题目数',
       type: 'RadioGroup',
