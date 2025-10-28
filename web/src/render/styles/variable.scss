@@ -1,5 +1,5 @@
-$primary-color: #fa881a;
-$primary-color-light: #fef3e8;
+$primary-color: #04dc70;
+$primary-color-light: #ecfff7;
 
 $title-color-deep: #292a36;
 $title-color: #4a4c5b;
@@ -13,3 +13,8 @@ $border-color: #dee2e6;
 $spliter-color: hsl(0, 0%, 97%, 0.5);
 
 $error-color: #ec4e29;
+
+// 默认 CSS 变量，保障运行态未注入皮肤配置时也有主色
+:root {
+  --primary-color: #04dc70;
+}

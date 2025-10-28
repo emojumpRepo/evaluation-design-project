@@ -45,7 +45,7 @@ const handleChange = (value) => {
   line-height: 1.8;
   color: #606266;
   background-color: #f4f4f5;
-  border-left: 3px solid #409eff;
+  border-left: 3px solid #04dc70;
   border-radius: 4px;
   white-space: pre-line;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',

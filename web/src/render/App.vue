@@ -9,14 +9,13 @@ import { useSurveyStore } from './stores/survey'
 
 const { skinConf } = storeToRefs(useSurveyStore())
 
-watch(skinConf, (skinConfig) => {
+const applyTheme = (skinConfig: any) => {
   const root = document.documentElement
   const { themeConf, backgroundConf, contentConf }: any = skinConfig
 
-  if (themeConf?.color) {
-    // 设置主题颜色
-    root.style.setProperty('--primary-color', themeConf?.color)
-  }
+  // 设置主题颜色（默认 #04dc70）
+  const themeColor = themeConf?.color || '#04dc70'
+  root.style.setProperty('--primary-color', themeColor)
 
   // 设置背景
   const { color, type, image } = backgroundConf || {}
@@ -29,6 +28,14 @@ watch(skinConf, (skinConfig) => {
     // 设置全局透明度
     root.style.setProperty('--opacity', `${contentConf.opacity / 100}`)
   }
+}
+
+// 立即应用一次（保证初始渲染也有主色）
+applyTheme(skinConf.value)
+
+// 监听变化
+watch(skinConf, (skinConfig) => {
+  applyTheme(skinConfig)
 })
 </script>
 <style lang="scss">

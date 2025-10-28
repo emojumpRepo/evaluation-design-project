@@ -650,7 +650,7 @@ watch(
     margin-top: 16px;
     padding: 12px;
     background-color: #f4f4f5;
-    border-left: 3px solid #409eff;
+    border-left: 3px solid #04dc70;
     border-radius: 4px;
 
     .preview-label {
