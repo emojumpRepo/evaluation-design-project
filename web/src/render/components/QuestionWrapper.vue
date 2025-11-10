@@ -9,9 +9,10 @@
   ></QuestionRuleContainer>
 </template>
 <script setup>
-import { unref, computed, watch } from 'vue'
+import { unref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { debounce, cloneDeep } from 'lodash-es'
+import AsyncValidator from 'async-validator'
 
 import { NORMAL_CHOICES, RATES, QUESTION_TYPE } from '@/common/typeEnum.ts'
 import QuestionRuleContainer from '@/materials/questions/QuestionRuleContainer'
@@ -162,6 +163,9 @@ const handleChange = (data) => {
   // 默认开启断点续答：记录内容
   // 直接使用完整的formValues，包含所有字段和扩展字段
   storageAnswer(formValues.value)
+
+  // 一页一题自动跳转逻辑
+  handleAutoNextPage()
 }
 
 const handleInput = debounce((e) => {
@@ -179,6 +183,127 @@ const storageAnswer = (formData) => {
   setSurveyData(surveyId, formData, userId)
   setSurveySubmit(surveyId, 0, userId)
 }
+
+// 一页一题自动跳转处理
+let autoNextTimer = null
+const handleAutoNextPage = async () => {
+  try {
+    // 清除之前的定时器，避免重复触发
+    if (autoNextTimer) {
+      clearTimeout(autoNextTimer)
+      autoNextTimer = null
+    }
+
+    // 检查当前题目是否启用了一页一题配置（默认启用，除非明确设置为false）
+    const oneQuestionPerPage = props.moduleConfig.oneQuestionPerPage
+    if (oneQuestionPerPage === false) {
+      return
+    }
+
+    // 检查当前页是否只有一道题
+    const currentPageQuestions = questionStore.renderData[0] || []
+    if (currentPageQuestions.length !== 1) {
+      return
+    }
+
+    // 检查是否是最后一页
+    if (questionStore.isFinallyPage) {
+      return
+    }
+
+    // 检查当前题目是否已完整答题
+    const field = props.moduleConfig.field
+    const type = props.moduleConfig.type
+    const isRequired = props.moduleConfig.isRequired
+
+    // 如果题目不是必填，检查主字段是否有值即可
+    if (!isRequired) {
+      const currentValue = formValues.value[field]
+      const hasAnswer = Array.isArray(currentValue)
+        ? currentValue.length > 0
+        : (currentValue !== undefined && currentValue !== null && currentValue !== '')
+
+      if (!hasAnswer) {
+        return
+      }
+    } else {
+      // 必填题目需要更严格的检查
+      // 检查主字段
+      const currentValue = formValues.value[field]
+      const hasMainAnswer = Array.isArray(currentValue)
+        ? currentValue.length > 0
+        : (currentValue !== undefined && currentValue !== null && currentValue !== '')
+
+      if (!hasMainAnswer) {
+        return
+      }
+
+      // 对于内联填空题等有多个输入项的题目，检查所有扩展字段
+      // 扩展字段格式通常是：field_xxx
+      if (type === 'inline-form' || type === 'matrix-checkbox') {
+        const prefix = `${field}_`
+        const extFields = Object.keys(formValues.value || {}).filter(k => k.startsWith(prefix))
+
+        // 如果有扩展字段，检查是否都已填写
+        if (extFields.length > 0) {
+          const allExtFieldsFilled = extFields.every(extField => {
+            const value = formValues.value[extField]
+            if (Array.isArray(value)) {
+              return value.length > 0
+            }
+            return value !== undefined && value !== null && value !== ''
+          })
+
+          if (!allExtFieldsFilled) {
+            return
+          }
+        }
+      }
+    }
+
+    // 验证表单是否通过校验
+    const rules = surveyStore.rules
+    if (rules && rules[field]) {
+      try {
+        const validator = new AsyncValidator({ [field]: rules[field] })
+        await validator.validate({ [field]: formValues.value[field] })
+      } catch (error) {
+        // 验证失败，不执行跳转
+        console.log('[自动跳转] 表单验证失败，取消跳转:', error)
+        return
+      }
+    }
+
+    // 延迟300ms自动跳转到下一页，给用户看到选中效果的时间
+    autoNextTimer = setTimeout(() => {
+      questionStore.addPageIndex()
+      autoNextTimer = null
+    }, 300)
+  } catch (e) {
+    console.warn('[QuestionWrapper] handleAutoNextPage error:', e)
+  }
+}
+
+// 清除自动跳转定时器（当手动点击下一页时）
+const clearAutoNextTimer = () => {
+  if (autoNextTimer) {
+    clearTimeout(autoNextTimer)
+    autoNextTimer = null
+  }
+}
+
+// 监听手动导航事件，清除自动跳转定时器
+onMounted(() => {
+  window.addEventListener('manual-next-page', clearAutoNextTimer)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('manual-next-page', clearAutoNextTimer)
+  if (autoNextTimer) {
+    clearTimeout(autoNextTimer)
+    autoNextTimer = null
+  }
+})
 
 /** 问卷逻辑处理 */
 // 显示逻辑：题目是否需要显示

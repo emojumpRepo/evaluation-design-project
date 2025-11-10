@@ -13,13 +13,13 @@
           @select="setCurrentEditOne('mainTitle')"
           @change="handleChange"
         />
-        <DescriptionModule
+        <!-- <DescriptionModule
           :bannerConf="{ ...bannerConf, currentPage: pageEditOne }"
           :readonly="false"
           :is-selected="currentEditOne === 'description'"
           @select="setCurrentEditOne('description')"
           @change="handleChange"
-        />
+        /> -->
         <MaterialGroup
           :current-edit-one="parseInt(currentEditOne)"
           :questionDataList="pageQuestionData"

@@ -115,6 +115,7 @@ export const useQuestionStore = defineStore('question', () => {
   const questionData = ref(null)
   const questionSeq = ref([]) // 题目的顺序，因为可能会有分页的情况，所以是一个二维数组[[qid1, qid2], [qid3,qid4]]
   const pageIndex = ref(1) // 当前分页的索引
+  const maxPageReached = ref(1) // 用户到达过的最大页码，用于限制上一页功能
   const changeField = ref(null)
   const changeIndex = computed(() => {
     if(!changeField.value || !questionData.value) return null
@@ -172,10 +173,17 @@ export const useQuestionStore = defineStore('question', () => {
     const totalPages = Array.isArray(surveyStore.pageConf) ? surveyStore.pageConf.length : 0
     if (pageIndex.value < totalPages) {
       pageIndex.value++
+      // 更新用户到达过的最大页码
+      if (pageIndex.value > maxPageReached.value) {
+        maxPageReached.value = pageIndex.value
+      }
     }
   }
+
   const subPageIndex = () => {
-    if (pageIndex.value > 1) {
+    // 只允许返回到 (maxPageReached - 1)，即只能返回上一页
+    const minAllowedPage = maxPageReached.value - 1
+    if (pageIndex.value > 1 && pageIndex.value > minAllowedPage) {
       pageIndex.value--
     }
   }
@@ -246,6 +254,7 @@ export const useQuestionStore = defineStore('question', () => {
     renderData,
     isFinallyPage,
     pageIndex,
+    maxPageReached,
     addPageIndex,
     subPageIndex,
     setQuestionData,

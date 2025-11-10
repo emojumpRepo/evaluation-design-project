@@ -1,3 +1,5 @@
+import basicConfig from '@materials/questions/common/config/basicConfig'
+
 export const meta = {
   title: '描述文本',
   type: 'description',
@@ -54,6 +56,7 @@ export const meta = {
     }
   ],
   formConfig: [
+    basicConfig,
     {
       name: 'content',
       title: '描述内容',

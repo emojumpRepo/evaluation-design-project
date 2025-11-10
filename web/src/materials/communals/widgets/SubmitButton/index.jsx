@@ -15,6 +15,10 @@ export default defineComponent({
     validate: Function,
     renderData: Array,
     canGoPrev: Boolean,
+    prevDisabled: {
+      type: Boolean,
+      default: false
+    },
     // 外部传入的提交中状态，用于禁用按钮和展示文案
     loading: {
       type: Boolean,
@@ -27,32 +31,44 @@ export default defineComponent({
     let clickLocked = false
 
     const submit = (e) => {
+      if (e) {
+        e.stopPropagation() // 阻止事件冒泡到外层 div
+        e.preventDefault()
+      }
+
       if (!props.readonly) return
       if (props.loading) return
       if (clickLocked) return
+
       clickLocked = true
       setTimeout(() => {
         clickLocked = false
-      }, 800)
+      }, 300)
+
       const validate = props.validate
-      if (e) {
-        e.preventDefault()
-        validate((valid) => {
-          if (valid) {
-            emit('submit')
-          }
-        })
-      }
+      validate((valid) => {
+        if (valid) {
+          emit('submit')
+        }
+      })
     }
 
     const goPrev = (e) => {
+      if (e) {
+        e.stopPropagation() // 阻止事件冒泡到外层 div
+        e.preventDefault()
+      }
+
       if (!props.readonly) return
       if (props.loading) return
-      if (e) e.preventDefault()
       emit('prev')
     }
 
-    const handleClick = () => {
+    const handleClick = (e) => {
+      // 如果点击的是按钮，不处理外层的 click 事件
+      if (e.target.tagName === 'BUTTON') {
+        return
+      }
       if (props.readonly) return
       emit('select')
     }
@@ -65,11 +81,11 @@ export default defineComponent({
     }
   },
   render() {
-    const { submitConf, isFinallyPage, canGoPrev, loading } = this.props
+    const { submitConf, isFinallyPage, canGoPrev, prevDisabled, loading } = this.props
     return (
       <div class={['submit-warp', 'preview-submit_wrapper']} onClick={this.handleClick}>
         {canGoPrev ? (
-          <button class="submit-btn prev-btn" type="button" disabled={loading} onClick={this.goPrev}>
+          <button class="submit-btn prev-btn" type="button" disabled={loading || prevDisabled} onClick={this.goPrev}>
             上一页
           </button>
         ) : null}

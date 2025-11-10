@@ -35,6 +35,14 @@ export default {
         )
       }
     },
+    // 一页一题配置
+    {
+      label: '一页一题',
+      type: 'CustomedSwitch',
+      key: 'oneQuestionPerPage',
+      value: true,
+      tip: '启用后，每道题单独显示一页，答完自动跳转到下一题。'
+    },
     // 自定义未作答分数（直接作为顶层条目渲染，避免嵌套 Customed 无法渲染组件）
     {
       label: '启用题目级未作答分数',

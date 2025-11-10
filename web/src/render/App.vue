@@ -14,7 +14,8 @@ const applyTheme = (skinConfig: any) => {
   const { themeConf, backgroundConf, contentConf }: any = skinConfig
 
   // 设置主题颜色（默认 #04dc70）
-  const themeColor = themeConf?.color || '#04dc70'
+  // const themeColor = themeConf?.color || '#04dc70'
+  const themeColor = '#04dc70'
   root.style.setProperty('--primary-color', themeColor)
 
   // 设置背景

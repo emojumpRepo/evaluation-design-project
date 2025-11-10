@@ -26,14 +26,12 @@ if (typeof window !== 'undefined' && typeof history !== 'undefined') {
             if (url.pathname.startsWith('/management/render/')) {
               const normalizedPath = url.pathname.replace(/^\/management/, '')
               const normalized = `${normalizedPath}${url.search}${url.hash}`
-              console.log(`[history.${method}] normalize ->`, incomingUrl, '=>', normalized)
               args[2] = normalized
             }
           }
         } catch (_) {
           // ignore parse errors
         }
-        console.log(`[history.${method}]`, ...args)
         return original.apply(history, args)
       }
       Object.defineProperty(wrapped, '__wrapped__', { value: true })
@@ -42,9 +40,6 @@ if (typeof window !== 'undefined' && typeof history !== 'undefined') {
   }
   wrapHistoryMethod('replaceState')
   wrapHistoryMethod('pushState')
-  window.addEventListener('popstate', (event) => {
-    console.log('[history.popstate]', window.location.href, event.state)
-  })
 }
 
 const getQueryString = (value: unknown): string => (typeof value === 'string' ? value : '')
@@ -73,10 +68,6 @@ onMounted(() => {
   const surveyId = route.params.surveyId as string
   const alert = useCommandComponent(AlertDialog)
 
-  console.log('[IndexPage] mount surveyId:', surveyId)
-  console.log('[IndexPage] route query:', route.query)
-  console.log('[IndexPage] location:', window.location.href)
-
   const redirect = getQueryString(route.query.redirect)
   const controlWordsParam =
     getQueryString(route.query.controlWords) || getQueryString(route.query.cw)
@@ -85,8 +76,6 @@ onMounted(() => {
 
   if (redirect) {
     const cachedParamsRaw = sessionStorage.getItem(sessionKey)
-    console.log('[IndexPage] sessionKey:', sessionKey)
-    console.log('[IndexPage] cached params:', cachedParamsRaw)
 
     if (cachedParamsRaw) {
       const params = JSON.parse(cachedParamsRaw) as CachedParams
@@ -97,7 +86,6 @@ onMounted(() => {
       surveyStore.setTenantId(params.tenantId)
       surveyStore.setRedirectUrl(params.redirect)
       surveyStore.setControlWords(params.controlWords || [])
-      console.log('[IndexPage] using cached params from sessionStorage')
       getDetail(surveyId, alert)
     } else {
       const params: CachedParams = {
@@ -110,9 +98,7 @@ onMounted(() => {
         controlWords
       }
 
-      console.log('[IndexPage] parsed query params:', params)
       sessionStorage.setItem(sessionKey, JSON.stringify(params))
-      console.log('[IndexPage] cached params to sessionStorage')
 
       surveyStore.setSurveyPath(surveyId)
       surveyStore.setUserId(params.userId)
@@ -121,19 +107,13 @@ onMounted(() => {
       surveyStore.setTenantId(params.tenantId)
       surveyStore.setRedirectUrl(params.redirect)
       surveyStore.setControlWords(params.controlWords || [])
-      console.log('[IndexPage] stored params in survey store')
 
       const cleanUrl = buildCleanUrl(surveyId)
-      console.log('[IndexPage] normalize url →', cleanUrl)
-      console.log('[IndexPage] router history base →', router.options.history.base)
 
       getDetail(surveyId, alert)
 
       nextTick(() => {
-        console.log('[IndexPage] replacing url...')
-        router.replace(cleanUrl).then(() => {
-          console.log('[IndexPage] url replace done')
-        })
+        router.replace(cleanUrl)
       })
     }
   } else {
@@ -141,13 +121,6 @@ onMounted(() => {
     const assessmentNo = getQueryString(route.query.assessmentNo)
     const questionId = getQueryString(route.query.questionId)
     const tenantId = getQueryString(route.query.tenantId)
-
-    console.log('[IndexPage] use direct query params:', {
-      userId,
-      assessmentNo,
-      questionId,
-      tenantId
-    })
 
     surveyStore.setSurveyPath(surveyId)
     surveyStore.setUserId(userId)
@@ -185,9 +158,45 @@ const loadData = (res: any, surveyPath: string) => {
       pageConf
     }
 
-    if (!pageConf || pageConf.length === 0) {
-      questionData.pageConf = [dataConf.dataList.length]
+    // 根据题目的 oneQuestionPerPage 配置生成分页
+    // 无论后端是否返回 pageConf，都根据题目配置重新生成
+    const generatedPageConf: number[] = []
+    const dataList = dataConf.dataList || []
+
+    let currentPageCount = 0
+
+    for (let i = 0; i < dataList.length; i++) {
+      const question = dataList[i]
+      // 默认启用一页一题，除非明确设置为 false
+      const oneQuestionPerPage = question.oneQuestionPerPage !== false
+
+      if (oneQuestionPerPage) {
+        // 如果当前页已有题目，先保存当前页
+        if (currentPageCount > 0) {
+          generatedPageConf.push(currentPageCount)
+          currentPageCount = 0
+        }
+        // 当前题目单独一页
+        generatedPageConf.push(1)
+      } else {
+        // 累加到当前页
+        currentPageCount++
+      }
     }
+
+    // 处理最后一页
+    if (currentPageCount > 0) {
+      generatedPageConf.push(currentPageCount)
+    }
+
+    // 使用生成的分页配置，如果生成失败则使用后端返回的，最后兜底为所有题目在一页
+    if (generatedPageConf.length > 0) {
+      questionData.pageConf = generatedPageConf
+    } else if (!pageConf || pageConf.length === 0) {
+      questionData.pageConf = [dataList.length]
+    }
+
+    console.log('[分页配置] 最终使用的分页配置:', questionData.pageConf)
 
     document.title = data.title
 

@@ -121,6 +121,7 @@ const validate = (callback) => {
   const length = fields.length
   if (length === 0) {
     callback(true)
+    return
   }
 
   let valid = true

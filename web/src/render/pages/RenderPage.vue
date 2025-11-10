@@ -3,7 +3,7 @@
     <ProgressBar />
     <div class="wrapper" ref="boxRef">
       <HeaderContent v-if="pageIndex == 1" :bannerConf="bannerConf" :readonly="true" />
-      <div class="content">
+      <div class="content" :class="{ 'one-question-mode': isOneQuestionPerPageMode }">
         <MainTitle 
           v-if="pageIndex == 1 && showMainTitle" 
           :bannerConf="bannerConf" 
@@ -22,6 +22,7 @@
           :isFinallyPage="isFinallyPage"
           :renderData="renderData"
           :canGoPrev="canGoPrev"
+          :prevDisabled="prevDisabled"
           :loading="isSubmitting"
           @submit="handleSubmit"
           @prev="handlePrev"
@@ -89,10 +90,20 @@ const questionStore = useQuestionStore()
 const renderData = computed(() => questionStore.renderData)
 const isFinallyPage = computed(() => questionStore.isFinallyPage)
 const pageIndex = computed(() => questionStore.pageIndex)
+const maxPageReached = computed(() => questionStore.maxPageReached)
 const { bannerConf, submitConf, bottomConf: logoConf, whiteData } = storeToRefs(surveyStore)
 const surveyPath = computed(() => surveyStore.surveyPath || '')
 
-const canGoPrev = computed(() => pageIndex.value > 1)
+// 只允许返回到 (maxPageReached - 1)，即只能返回上一页
+const canGoPrev = computed(() => {
+  return pageIndex.value > 1
+})
+
+// 上一页按钮是否禁用
+const prevDisabled = computed(() => {
+  const minAllowedPage = maxPageReached.value - 1
+  return pageIndex.value <= minAllowedPage
+})
 
 // 检查HTML内容是否包含有效文本（不只是HTML标签）
 const hasValidContent = (htmlContent: string | undefined): boolean => {
@@ -106,6 +117,12 @@ const hasValidContent = (htmlContent: string | undefined): boolean => {
 // 计算主标题与描述显示（避免模板中的类型报错）
 const showMainTitle = computed(() => hasValidContent((bannerConf.value as any)?.titleConfig?.mainTitle))
 const showDescription = computed(() => hasValidContent((bannerConf.value as any)?.descriptionConfig?.[`page${pageIndex.value}`]?.content))
+
+// 判断当前是否是一页一题模式
+const isOneQuestionPerPageMode = computed(() => {
+  const currentPageQuestions = renderData.value[0] || []
+  return currentPageQuestions.length === 1
+})
 
 // 分页变化时，滚动到页面头部并定位当前页第一个问题
 watch(pageIndex, async () => {
@@ -219,8 +236,8 @@ const submitSurvey = async () => {
     const res: any = await submitForm(params)
     if (res.code === 200) {
       // 提交成功后清空作答数据
-      // clearSurveyData(surveyPath.value, surveyStore.userId)
-      // clearSurveySubmit(surveyPath.value, surveyStore.userId)
+      clearSurveyData(surveyPath.value, surveyStore.userId)
+      clearSurveySubmit(surveyPath.value, surveyStore.userId)
       
       // 清理sessionStorage中的参数缓存
       const sessionKey = `survey_params_${surveyPath.value}`
@@ -327,6 +344,9 @@ const submitSurvey = async () => {
 }
 
 const handleSubmit = () => {
+  // 清除任何可能正在进行的自动跳转定时器，避免冲突
+  window.dispatchEvent(new CustomEvent('manual-next-page'))
+
   const confirmAgain = (surveyStore.submitConf as any).confirmAgain
   const { again_text, is_again } = confirmAgain
   if (!isFinallyPage.value) {
@@ -367,6 +387,59 @@ const handleSubmit = () => {
       background: rgba(255, 255, 255, var(--opacity));
       border-radius: 8px 8px 0 0;
       height: 100%;
+
+      // 一页一题模式样式优化
+      &.one-question-mode {
+        display: flex;
+        flex-direction: column;
+        min-height: 75vh;
+
+        // 题目区域：靠上显示，不完全居中，视距更舒适
+        :deep(.main) {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          justify-content: flex-start; // 改为靠上对齐
+          padding: 120px 20px 40px; // 增加顶部 padding，让题目位置更舒适
+          max-width: 800px;
+          margin: 0 auto;
+          width: 100%;
+        }
+
+        // 隐藏一页一题模式下的题目分割线
+        :deep(.question-wrapper.spliter) {
+          border-bottom: none;
+        }
+
+        // 按钮区域固定在底部
+        :deep(.submit-warp) {
+          margin-top: auto;
+          padding: 20px 20px 80px;
+          position: sticky;
+          bottom: 0;
+          margin-bottom: 60px;
+        }
+
+        // 移动端适配
+        @media (max-width: 768px) {
+          min-height: 65vh;
+
+          :deep(.main) {
+            padding: 80px 16px 30px; // 移动端减少顶部间距
+          }
+
+          :deep(.submit-warp) {
+            padding: 16px;
+          }
+        }
+
+        // 平板适配
+        @media (min-width: 769px) and (max-width: 1024px) {
+          :deep(.main) {
+            padding: 100px 20px 40px;
+          }
+        }
+      }
     }
   }
 }

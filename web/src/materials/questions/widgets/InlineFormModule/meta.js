@@ -33,7 +33,7 @@ const meta = {
       name: 'showSpliter',
       propType: Boolean,
       description: '显示分割线',
-      defaultValue: true
+      defaultValue: false
     },
     {
       name: 'content',
