@@ -9,11 +9,11 @@
           :bannerConf="bannerConf" 
           :readonly="true"
         />
-        <DescriptionModule 
+        <!-- <DescriptionModule 
           v-if="showDescription" 
           :bannerConf="{ ...bannerConf, currentPage: pageIndex }" 
           :readonly="true"
-        />
+        /> -->
         <MainRenderer ref="mainRef"></MainRenderer>
         <SubmitButton
           :validate="validate"
