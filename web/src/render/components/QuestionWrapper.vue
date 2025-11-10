@@ -200,6 +200,12 @@ const handleAutoNextPage = async () => {
       return
     }
 
+    // 检查题目类型，多选题不自动跳转（用户需要选择多个选项）
+    const type = props.moduleConfig.type
+    if (type === 'checkbox' || type === 'select-multiple') {
+      return
+    }
+
     // 检查当前页是否只有一道题
     const currentPageQuestions = questionStore.renderData[0] || []
     if (currentPageQuestions.length !== 1) {
@@ -213,7 +219,6 @@ const handleAutoNextPage = async () => {
 
     // 检查当前题目是否已完整答题
     const field = props.moduleConfig.field
-    const type = props.moduleConfig.type
     const isRequired = props.moduleConfig.isRequired
 
     // 如果题目不是必填，检查主字段是否有值即可
@@ -339,7 +344,8 @@ const logicSkip = computed(() => {
   return needHideFields.value.includes(props.moduleConfig.field)
 })
 const visibility = computed(() => {
-  return logicShow.value && !logicSkip.value
+  const visible = logicShow.value && !logicSkip.value
+  return visible
 })
 
 // 清空指定题目的答案（含扩展键）并精确更新本地存储

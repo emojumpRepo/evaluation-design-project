@@ -127,6 +127,15 @@ export const useQuestionStore = defineStore('question', () => {
   const questionList = computed(() => {
     let index = 1
     const hideMap = needHideFields.value.concat(showLogicHideFields.value)
+    const surveyStore = useSurveyStore()
+
+    // 获取显示逻辑引擎和表单值，用于主动计算题目可见性
+    const showLogicEngine = surveyStore.showLogicEngine
+    const formValues = surveyStore.formValues
+    const facts = Object.assign({ __schema: surveyStore?.dataConf?.dataList || [] }, formValues)
+
+    console.log('[questionList] hideMap:', hideMap)
+
     return (
       questionSeq.value &&
       questionSeq.value.reduce((pre, item) => {
@@ -136,9 +145,31 @@ export const useQuestionStore = defineStore('question', () => {
           const question = { ...questionData.value[questionKey] }
           // 跳过描述组件的编号（描述组件不是题目）
           const isDescriptionType = question.type === 'description'
-          // 开启显示序号
-          if (question.showIndex && !hideMap.includes(questionKey) && !isDescriptionType) {
-            question.indexNumber = index++
+
+          // 主动计算显示逻辑（不依赖 QuestionWrapper 的 watch）
+          let logicShow = true
+          if (showLogicEngine && typeof showLogicEngine.match === 'function') {
+            try {
+              const result = showLogicEngine.match(questionKey, 'question', facts)
+              logicShow = result === undefined ? true : result
+            } catch (error) {
+              logicShow = true
+            }
+          }
+
+          // 检查跳转逻辑
+          const logicSkip = needHideFields.value.includes(questionKey)
+
+          // 题目是否可见
+          const isVisible = logicShow && !logicSkip
+
+          // 开启显示序号且题目可见
+          if (question.showIndex && isVisible && !isDescriptionType) {
+            question.indexNumber = index
+            console.log(`[questionList] 分配序号 ${index} 给题目 ${questionKey} (${question.title})`)
+            index++
+          } else if (!isVisible) {
+            console.log(`[questionList] 跳过隐藏题目 ${questionKey} (${question.title}), logicShow=${logicShow}, logicSkip=${logicSkip}`)
           }
 
           questionArr.push(question)
@@ -157,35 +188,181 @@ export const useQuestionStore = defineStore('question', () => {
     const { startIndex, endIndex } = getSorter()
     const data = questionList.value[0]
     if (!data || !Array.isArray(data) || data.length === 0) return []
-    return [data.slice(startIndex, endIndex)]
+    const sliced = data.slice(startIndex, endIndex)
+    console.log('[renderData] 当前页题目:', {
+      pageIndex: pageIndex.value,
+      startIndex,
+      endIndex,
+      totalQuestions: data.length,
+      currentPageQuestions: sliced.length,
+      questions: sliced.map(q => ({ field: q.field, title: q.title, type: q.type }))
+    })
+    return [sliced]
   })
+
+  // 检查某一页是否有可见题目（供上一页、下一页和isFinallyPage使用）
+  const hasVisibleQuestions = (targetPage) => {
+    const surveyStore = useSurveyStore()
+
+    // 获取该页的题目范围
+    let startIndex = 0
+    for (let i = 0; i < targetPage - 1; i++) {
+      startIndex += surveyStore.pageConf[i] || 0
+    }
+    const endIndex = startIndex + (surveyStore.pageConf[targetPage - 1] || 0)
+
+    const allQuestions = questionList.value[0] || []
+    const pageQuestions = allQuestions.slice(startIndex, endIndex)
+
+    console.log(`[hasVisibleQuestions] 检查第 ${targetPage} 页题目可见性:`, {
+      startIndex,
+      endIndex,
+      questionCount: pageQuestions.length,
+      questions: pageQuestions.map(q => q.field)
+    })
+
+    if (pageQuestions.length === 0) {
+      return false
+    }
+
+    // 检查显示逻辑引擎
+    const showLogicEngine = surveyStore.showLogicEngine
+    const formValues = surveyStore.formValues
+    const facts = Object.assign({ __schema: surveyStore?.dataConf?.dataList || [] }, formValues)
+
+    // 检查是否至少有一个题目可见
+    for (const question of pageQuestions) {
+      const field = question.field
+
+      // 检查显示逻辑
+      let logicShow = true
+      if (showLogicEngine && typeof showLogicEngine.match === 'function') {
+        try {
+          const result = showLogicEngine.match(field, 'question', facts)
+          logicShow = result === undefined ? true : result
+        } catch (error) {
+          console.warn('[hasVisibleQuestions] logicShow match failed:', error)
+          logicShow = true
+        }
+      }
+
+      // 检查跳转逻辑
+      const logicSkip = needHideFields.value.includes(field)
+
+      const visible = logicShow && !logicSkip
+
+      console.log(`[hasVisibleQuestions] 题目 ${field} 可见性:`, {
+        title: question.title,
+        logicShow,
+        logicSkip,
+        visible
+      })
+
+      if (visible) {
+        return true
+      }
+    }
+
+    return false
+  }
 
   const isFinallyPage = computed(() => {
     const surveyStore = useSurveyStore()
     if (surveyStore.pageConf.length === 0) {
       return true
     }
-    return pageIndex.value === surveyStore.pageConf.length
+
+    // 如果已经是物理上的最后一页
+    if (pageIndex.value === surveyStore.pageConf.length) {
+      return true
+    }
+
+    // 检查当前页之后是否还有可见题目
+    const totalPages = surveyStore.pageConf.length
+    for (let targetPage = pageIndex.value + 1; targetPage <= totalPages; targetPage++) {
+      if (hasVisibleQuestions(targetPage)) {
+        // 找到至少一个有可见题目的页面，不是最后一页
+        console.log(`[isFinallyPage] 第 ${targetPage} 页有可见题目，当前不是最后一页`)
+        return false
+      }
+    }
+
+    // 后面所有页面都没有可见题目，当前页是最后一页
+    console.log(`[isFinallyPage] 后续页面都无可见题目，当前页为最后一页`)
+    return true
   })
 
   const addPageIndex = () => {
     const surveyStore = useSurveyStore()
     const totalPages = Array.isArray(surveyStore.pageConf) ? surveyStore.pageConf.length : 0
-    if (pageIndex.value < totalPages) {
-      pageIndex.value++
-      // 更新用户到达过的最大页码
-      if (pageIndex.value > maxPageReached.value) {
-        maxPageReached.value = pageIndex.value
-      }
+    const beforePage = pageIndex.value
+
+    if (pageIndex.value >= totalPages) {
+      console.log('[addPageIndex] 已是最后一页，无法继续')
+      return
     }
+
+    // 从下一页开始往后找，直到找到有可见题目的页
+    let targetPage = pageIndex.value + 1
+
+    while (targetPage <= totalPages) {
+      if (hasVisibleQuestions(targetPage)) {
+        pageIndex.value = targetPage
+        // 更新用户到达过的最大页码
+        if (pageIndex.value > maxPageReached.value) {
+          maxPageReached.value = pageIndex.value
+        }
+        console.log('[addPageIndex] 跳转到下一页:', {
+          beforePage,
+          afterPage: pageIndex.value,
+          maxPageReached: maxPageReached.value,
+          changed: beforePage !== pageIndex.value
+        })
+        return
+      }
+
+      console.log(`[addPageIndex] 第 ${targetPage} 页无可见题目，继续往后找`)
+      targetPage++
+    }
+
+    // 如果没找到可见页，不移动
+    console.log('[addPageIndex] 未找到有可见题目的页面，保持当前页')
   }
 
   const subPageIndex = () => {
-    // 只允许返回到 (maxPageReached - 1)，即只能返回上一页
-    const minAllowedPage = maxPageReached.value - 1
-    if (pageIndex.value > 1 && pageIndex.value > minAllowedPage) {
-      pageIndex.value--
+    const beforePage = pageIndex.value
+    // 只允许点击一次上一页：当前页必须等于 maxPageReached 才能返回
+    if (pageIndex.value < maxPageReached.value) {
+      console.log('[subPageIndex] 已经在历史页面，无法继续返回')
+      return
     }
+
+    if (pageIndex.value <= 1) {
+      console.log('[subPageIndex] 已在第一页，无法返回')
+      return
+    }
+
+    // 从当前页往前找，直到找到有可见题目的页（不限制查找范围，只限制点击次数）
+    let targetPage = pageIndex.value - 1
+
+    while (targetPage >= 1) {
+      if (hasVisibleQuestions(targetPage)) {
+        pageIndex.value = targetPage
+        console.log('[subPageIndex] 返回上一页:', {
+          beforePage,
+          afterPage: pageIndex.value,
+          maxPageReached: maxPageReached.value,
+          changed: beforePage !== pageIndex.value
+        })
+        return
+      }
+
+      console.log(`[subPageIndex] 第 ${targetPage} 页无可见题目，继续往前找`)
+      targetPage--
+    }
+
+    // 如果没找到可见页，不移动
+    console.log('[subPageIndex] 未找到有可见题目的页面，保持当前页')
   }
 
   const getSorter = () => {
