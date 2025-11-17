@@ -166,10 +166,10 @@ export const useQuestionStore = defineStore('question', () => {
           // 开启显示序号且题目可见
           if (question.showIndex && isVisible && !isDescriptionType) {
             question.indexNumber = index
-            console.log(`[questionList] 分配序号 ${index} 给题目 ${questionKey} (${question.title})`)
+            // console.log(`[questionList] 分配序号 ${index} 给题目 ${questionKey} (${question.title})`)
             index++
           } else if (!isVisible) {
-            console.log(`[questionList] 跳过隐藏题目 ${questionKey} (${question.title}), logicShow=${logicShow}, logicSkip=${logicSkip}`)
+            // console.log(`[questionList] 跳过隐藏题目 ${questionKey} (${question.title}), logicShow=${logicShow}, logicSkip=${logicSkip}`)
           }
 
           questionArr.push(question)

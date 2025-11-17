@@ -264,6 +264,38 @@ const handleAutoNextPage = async () => {
           }
         }
       }
+
+      // 检查单选题和多选题的"其他"选项输入框
+      if (type === 'radio' || type === 'checkbox') {
+        const options = props.moduleConfig.options || []
+        const selectedValue = currentValue
+
+        // 找出被选中且有"其他"输入框的选项
+        const selectedOptions = options.filter(option => {
+          if (!option.others) return false
+
+          // 检查该选项是否被选中
+          if (Array.isArray(selectedValue)) {
+            return selectedValue.includes(option.hash)
+          }
+          return selectedValue === option.hash
+        })
+
+        // 检查每个被选中的"其他"选项的输入框是否已填写
+        for (const option of selectedOptions) {
+          const othersKey = `${field}_${option.hash}`
+          const othersValue = formValues.value[othersKey]
+          const isFilled = othersValue !== undefined && othersValue !== null && othersValue !== ''
+
+          // 如果该选项标记为必填（mustOthers），或者题目本身是必填的，则输入框必须填写
+          if (option.mustOthers || isRequired) {
+            if (!isFilled) {
+              console.log('[自动跳转] "其他"选项的输入框未填写，取消跳转:', othersKey)
+              return
+            }
+          }
+        }
+      }
     }
 
     // 验证表单是否通过校验

@@ -738,16 +738,16 @@ export class SurveyResponseController {
     );
 
     if (calculateConf?.enabled && calculateConf?.code) {
-      console.log('开始执行结果计算...');
-      this.logger.info('开始执行结果计算');
+      // console.log('开始执行结果计算...');
+      // this.logger.info('开始执行结果计算');
       // 使用正确的题目数据源
       const questionList =
         (responseSchema?.code as any)?.questionDataList ||
         responseSchema?.code?.dataConf?.dataList ||
         [];
 
-      console.log(`题目列表长度: ${questionList.length}`);
-      this.logger.info(`题目列表长度: ${questionList.length}`);
+      // console.log(`题目列表长度: ${questionList.length}`);
+      // this.logger.info(`题目列表长度: ${questionList.length}`);
 
       try {
         calculationResult = await this.calculateService.processCalculation(
